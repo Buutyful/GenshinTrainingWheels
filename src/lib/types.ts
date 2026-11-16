@@ -157,6 +157,35 @@ export interface Settings {
   holdAttackMs: number;
   tracker: TrackerSettings;
   audio: AudioSettings;
+  music: MusicSettings;
+}
+
+/** Sound of the rhythm-mode backing track; tuned by ear on the Jam screen. */
+export interface MusicSettings {
+  /** Music bus level, 0..1. */
+  volume: number;
+  /** Acid filter resting cut-off, Hz. */
+  cutoff: number;
+  /** Acid filter resonance, 0..1. */
+  resonance: number;
+  /** How far the acid filter envelope opens, 0..1. */
+  envMod: number;
+  /** Acid filter envelope decay, seconds. */
+  decay: number;
+  /** Acid saturation, 0..1. */
+  drive: number;
+  /** Detune of the stab saws, cents. */
+  stabDetune: number;
+  /** Total spread of the supersaw, cents. */
+  sawDetune: number;
+  /** How far the kick ducks the tonal layers, 0..1. */
+  sidechain: number;
+  /** Per-instrument levels, 0..1. */
+  kick: number;
+  hat: number;
+  acid: number;
+  stab: number;
+  lift: number;
 }
 
 export interface AppData {

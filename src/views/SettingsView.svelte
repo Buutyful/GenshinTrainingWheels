@@ -171,6 +171,10 @@
       <div class="spacer"></div>
       <button onclick={() => playCue(CUES[2].step, true)}>Hear a cue with its build-up</button>
     </div>
+
+    <h2>Rhythm mode sound (preview)</h2>
+    <p class="muted">The backing track for the upcoming rhythm mode. Tune its sound by ear and play along with your keys.</p>
+    <div class="row"><button onclick={() => go({ name: 'jam' })}>Open the Jam lab</button></div>
   </section>
 
   <section class="panel">

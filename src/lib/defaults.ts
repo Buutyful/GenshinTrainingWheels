@@ -36,6 +36,22 @@ export const DEFAULT_SETTINGS: Settings = {
     feedback: true,
     hitTick: false,
   },
+  music: {
+    volume: 0.7,
+    cutoff: 420,
+    resonance: 0.65,
+    envMod: 0.55,
+    decay: 0.22,
+    drive: 0.35,
+    stabDetune: 12,
+    sawDetune: 32,
+    sidechain: 0.55,
+    kick: 0.9,
+    hat: 0.5,
+    acid: 0.7,
+    stab: 0.6,
+    lift: 0.6,
+  },
 };
 
 export function newId(): string {
@@ -126,6 +142,7 @@ export function migrate(raw: string | null): AppData | null {
         bindings: { ...base.settings.bindings, ...(s.bindings ?? {}) },
         tracker: { ...base.settings.tracker, ...(s.tracker ?? {}) },
         audio: known(base.settings.audio, s.audio),
+        music: known(base.settings.music, s.music),
       },
     };
   } catch {

@@ -8,7 +8,8 @@ export type View =
   | { name: 'edit'; id: string }
   | { name: 'session'; id: string }
   | { name: 'metrics'; id: string }
-  | { name: 'settings' };
+  | { name: 'settings' }
+  | { name: 'jam' };
 
 export const app = $state<{ loaded: boolean; data: AppData; view: View; elevated: boolean | null }>({
   loaded: false,
