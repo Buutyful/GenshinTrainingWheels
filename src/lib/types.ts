@@ -80,6 +80,26 @@ export interface Loadout {
   rotationSec?: number | null;
   history: SessionSummary[];
   timings?: Timings;
+  /** Rhythm-mode backing track, built from one of the player's clean laps. */
+  track?: RhythmTrack;
+}
+
+/**
+ * One clean lap quantised onto the 128 BPM grid. Positions are 16th notes from the start of the
+ * lap (the looping part of the rotation, or all of it for a one-shot).
+ */
+export interface RhythmTrack {
+  /** Rotation this was recorded on (`timingSig`); the track is ignored when it changes. */
+  sig: string;
+  bpm: number;
+  bars: number;
+  /** Per flattened step: the 16th where it starts, -1 for steps outside the lap (an opener). */
+  pos: number[];
+  /** Per flattened step: the 16th of its last click (attack strings), else equal to `pos`. */
+  end: number[];
+  /** Length of the recorded lap, ms. */
+  lapMs: number;
+  recordedAt: number;
 }
 
 /** A semantic in-game action derived from raw input. For `swap`, `slot` is the target. */
@@ -117,6 +137,10 @@ export type Guidance = 'full' | 'swaps' | 'adaptive' | 'off';
 export type OffTrackPolicy = 'resync' | 'restart';
 
 export interface AudioSettings {
+  /** Whole-app level, 0..1; multiplies cues and music. */
+  master: number;
+  muted: boolean;
+  /** Level of the arcade cues and feedback sounds, 0..1. */
   volume: number;
   guidance: Guidance;
   /** How long before a step is due its cue starts: ears and hands need time to react. */
@@ -160,32 +184,23 @@ export interface Settings {
   music: MusicSettings;
 }
 
-/** Sound of the rhythm-mode backing track; tuned by ear on the Jam screen. */
+export type MusicStyle = 'hiphop' | 'funk' | 'house' | 'rock';
+
+/** The rhythm-mode backing band; the action cues are the same in every style. */
 export interface MusicSettings {
-  /** Music bus level, 0..1. */
+  style: MusicStyle;
+  /** Which of the style's grooves plays; -1 moves on to the next one every phrase. */
+  groove: number;
+  /** A drum fill at the end of every phrase. */
+  fills: boolean;
+  /** Music level, 0..1 (the mixer's Music fader). */
   volume: number;
-  /** Acid filter resting cut-off, Hz. */
-  cutoff: number;
-  /** Acid filter resonance, 0..1. */
-  resonance: number;
-  /** How far the acid filter envelope opens, 0..1. */
-  envMod: number;
-  /** Acid filter envelope decay, seconds. */
-  decay: number;
-  /** Acid saturation, 0..1. */
-  drive: number;
-  /** Detune of the stab saws, cents. */
-  stabDetune: number;
-  /** Total spread of the supersaw, cents. */
-  sawDetune: number;
-  /** How far the kick ducks the tonal layers, 0..1. */
-  sidechain: number;
-  /** Per-instrument levels, 0..1. */
-  kick: number;
-  hat: number;
-  acid: number;
-  stab: number;
-  lift: number;
+  /** Levels inside the band, 0..1. */
+  drums: number;
+  bass: number;
+  keys: number;
+  /** Room size, 0..1 (0.5 is the style's own). */
+  reverb: number;
 }
 
 export interface AppData {

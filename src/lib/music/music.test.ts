@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { encodeWav, fft, gridOffsets, levels, onsets, spectrogram } from './analysis';
-import { BASE, demoTriggers, LIFT_CHORD, SLOT_CHORDS } from './groove';
+import { DEMO } from './arrange';
+import { grooveFor, grooves, hitsAt, PHRASE_BARS, PIECES, STYLE_IDS, STYLES } from './band';
+import { CUE_GUIDE, SLOT_NOTES } from './cuelayer';
 import { acidPhrase, barSec, midiToHz, noteToMidi, notes, stepSec, steps } from './patterns';
 import { dueSteps, nextGridStep, Scheduler, stepTime } from './scheduler';
 
@@ -48,26 +50,6 @@ describe('patterns', () => {
     expect(v.map((n) => n.length)).toEqual([1, 1]);
   });
 
-  it('base loop is one bar of 16ths', () => {
-    for (const p of [BASE.kick, BASE.hat, BASE.tick, BASE.acid.accent, BASE.acid.slide]) expect(steps(p)).toHaveLength(16);
-    expect(notes(BASE.acid.notes)).toHaveLength(16);
-    // Kick on every beat: four-on-the-floor.
-    expect(steps(BASE.kick).map((v, i) => (v ? i : -1)).filter((i) => i >= 0)).toEqual([0, 4, 8, 12]);
-  });
-
-  it('gives every slot its own chord, rising with the slot', () => {
-    const tops = SLOT_CHORDS.map((c) => Math.max(...c));
-    expect(new Set(SLOT_CHORDS.map((c) => c.join())).size).toBe(4);
-    expect([...tops].sort((a, b) => a - b)).toEqual(tops);
-    expect(LIFT_CHORD.length).toBeGreaterThanOrEqual(3);
-  });
-
-  it('demo arrangement fires every action type within 4 bars', () => {
-    const kinds = new Set<string>();
-    for (let i = 0; i < 64; i++) for (const t of demoTriggers(i)) kinds.add(t.kind === 'stab' ? `stab${t.slot}` : t.kind);
-    expect([...kinds].sort()).toEqual(['clap', 'drop', 'stab0', 'stab1', 'stab2', 'stab3']);
-    expect(demoTriggers(64)).toEqual(demoTriggers(0));
-  });
 });
 
 describe('scheduler', () => {
@@ -182,5 +164,72 @@ describe('analysis', () => {
     expect(wav.byteLength).toBe(44 + 3 * 2 * 2);
     expect(wav.getInt16(44 + 4, true)).toBe(0x7fff);
     expect(wav.getInt16(44 + 8, true)).toBe(-0x8000);
+  });
+});
+
+describe('styles and grooves', () => {
+  it('every style has real grooves and fills that fit their bars', () => {
+    for (const id of STYLE_IDS) {
+      const g = grooves(id);
+      expect(g.beats.length, id).toBeGreaterThanOrEqual(4);
+      expect(g.fills.length, id).toBeGreaterThanOrEqual(2);
+      for (const b of g.beats) {
+        for (const [step, piece, vel, off] of b.hits) {
+          expect(step).toBeGreaterThanOrEqual(0);
+          expect(step).toBeLessThan(32);
+          expect(PIECES[piece]).toBeDefined();
+          expect(vel).toBeGreaterThan(0);
+          expect(Math.abs(off)).toBeLessThanOrEqual(50);
+        }
+      }
+      for (const f of g.fills) for (const [step] of f.hits) expect(step).toBeLessThan(16);
+    }
+  });
+
+  it('backbeat styles keep a kick on 1 in their grooves', () => {
+    for (const id of ['hiphop', 'funk', 'rock'] as const) {
+      for (const b of grooves(id).beats) expect(b.hits.some((h) => h[0] === 0), b.id).toBe(true);
+    }
+  });
+
+  it('rotates grooves every phrase and ends each phrase on a fill', () => {
+    const first = grooveFor('funk', 0, -1, true);
+    const nextPhrase = grooveFor('funk', PHRASE_BARS, -1, true);
+    expect(first.fill).toBe(false);
+    expect(nextPhrase.src.id).not.toBe(first.src.id);
+    expect(grooveFor('funk', PHRASE_BARS - 1, -1, true).fill).toBe(true);
+    expect(grooveFor('funk', PHRASE_BARS - 1, -1, false).fill).toBe(false);
+    // A fixed choice keeps the same groove.
+    expect(grooveFor('funk', PHRASE_BARS, 2, false).src.id).toBe(grooveFor('funk', 0, 2, false).src.id);
+    // Two-bar loops alternate their bars.
+    expect(grooveFor('funk', 1, 0, false).barInSrc).toBe(1);
+  });
+
+  it('finds the hits of a groove 16th', () => {
+    const src = grooves('rock').beats[0];
+    const all = Array.from({ length: 16 }, (_, i) => hitsAt(src, 0, i).length + hitsAt(src, 1, i).length).reduce((a, b) => a + b, 0);
+    expect(all).toBe(src.hits.length);
+  });
+
+  it('chords cover every style', () => {
+    for (const id of STYLE_IDS) {
+      expect(STYLES[id].chords.length).toBeGreaterThan(0);
+      for (const c of STYLES[id].chords) for (const n of c) expect(() => noteToMidi(n)).not.toThrow();
+    }
+  });
+});
+
+describe('cue layer', () => {
+  it('gives every slot its own pitch, rising with the slot', () => {
+    expect(new Set(SLOT_NOTES).size).toBe(4);
+    expect([...SLOT_NOTES].sort((a, b) => a - b)).toEqual(SLOT_NOTES);
+  });
+
+  it('the guide and the demo cover every cue', () => {
+    const kinds = (ts: { kind: string }[]) => new Set(ts.map((t) => t.kind));
+    const all = ['stab', 'clap', 'drop', 'tick', 'snap', 'sweep', 'blip'];
+    expect([...kinds(CUE_GUIDE.flatMap((c) => c.triggers))].sort()).toEqual([...all].sort());
+    expect([...kinds(DEMO.events.map((e) => e.trigger))].sort()).toEqual([...all].sort());
+    expect(DEMO.length).toBe(64);
   });
 });

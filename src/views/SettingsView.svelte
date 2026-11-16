@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Mixer from '../components/Mixer.svelte';
   import { onDestroy } from 'svelte';
   import { app, go } from '../lib/app.svelte';
   import { AudioOut } from '../lib/audio';
@@ -6,6 +7,7 @@
   import type { FlatStep } from '../lib/engine';
   import { nowMs } from '../lib/platform';
   import { DEFAULT_SETTINGS } from '../lib/defaults';
+  import { GROOVE_CREDIT, STYLE_IDS, STYLES } from '../lib/music/band';
   import { prettyCode } from '../lib/keycodes';
   import type { ActionType, BindKey, Slot } from '../lib/types';
 
@@ -102,6 +104,7 @@
   <button onclick={() => go({ name: 'home' })}>Back</button>
   <h1>Settings</h1>
   <div class="spacer"></div>
+  <Mixer />
   <button onclick={reset}>Reset to defaults</button>
 </header>
 
@@ -172,9 +175,22 @@
       <button onclick={() => playCue(CUES[2].step, true)}>Hear a cue with its build-up</button>
     </div>
 
-    <h2>Rhythm mode sound (preview)</h2>
-    <p class="muted">The backing track for the upcoming rhythm mode. Tune its sound by ear and play along with your keys.</p>
-    <div class="row"><button onclick={() => go({ name: 'jam' })}>Open the Jam lab</button></div>
+    <h2>Rhythm mode music</h2>
+    <p class="muted">
+      Rhythm mode plays your rotation as cues over a band. The cues are the same in every style; pick the music you can listen
+      to for a long time.
+    </p>
+    <div class="row wrap">
+      <label class="field">
+        <span>Style</span>
+        <select bind:value={s.music.style} onchange={() => (s.music.groove = -1)}>
+          {#each STYLE_IDS as id (id)}<option value={id}>{STYLES[id].label}</option>{/each}
+        </select>
+      </label>
+      <div class="spacer"></div>
+      <button onclick={() => go({ name: 'jam' })}>Open the Music lab</button>
+    </div>
+    <p class="muted small">{GROOVE_CREDIT}</p>
   </section>
 
   <section class="panel">

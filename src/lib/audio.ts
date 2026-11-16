@@ -1,13 +1,15 @@
 import type { CueOutput, Sfx } from './cues';
 import type { FlatStep } from './engine';
+import { cueGain, getMix, onMix } from './mix';
 import { nowMs } from './platform';
 import type { AudioSettings } from './types';
 
 // One pentatonic palette for everything, so any two cues that overlap still sound in tune.
-const C4 = 261.63, E4 = 329.63, G4 = 392.0;
-const C5 = 523.25, E5 = 659.25, G5 = 783.99, A5 = 880.0;
-const C6 = 1046.5, E6 = 1318.51, A6 = 1760.0;
-const ARP = [C5, E5, G5, C6];
+// One octave lower than the first version, which players found shrill.
+const C3 = 130.81, E3 = 164.81, G3 = 196.0;
+const C4 = 261.63, E4 = 329.63, G4 = 392.0, A4 = 440.0;
+const C5 = 523.25, E5 = 659.25, A5 = 880.0;
+const ARP = [C4, E4, G4, C5];
 
 interface NoteOpts {
   type?: OscillatorType;
@@ -34,6 +36,7 @@ export class AudioOut implements CueOutput {
   private master: GainNode | null = null;
   private noiseBuf: AudioBuffer | null = null;
   private buildupNodes = new Set<{ src: AudioScheduledSourceNode; gain: GainNode }>();
+  private unsubscribe: (() => void) | null = null;
 
   constructor(private cfg: AudioSettings) {}
 
@@ -42,10 +45,11 @@ export class AudioOut implements CueOutput {
     if (!this.ctx) {
       const ctx = new AudioContext({ latencyHint: 'interactive' });
       this.master = ctx.createGain();
+      this.master.gain.value = cueGain(getMix());
       // Rounds off the square waves, and the compressor keeps overlapping cues from spiking.
       const soften = ctx.createBiquadFilter();
       soften.type = 'lowpass';
-      soften.frequency.value = 5200;
+      soften.frequency.value = 3800;
       soften.Q.value = 0.4;
       const comp = ctx.createDynamicsCompressor();
       comp.threshold.value = -18;
@@ -57,11 +61,14 @@ export class AudioOut implements CueOutput {
       this.noiseBuf = buf;
       this.ctx = ctx;
     }
-    this.master!.gain.value = this.cfg.volume;
+    // Level follows the top-bar mixer live; the cue volume itself is the mixer's Cues fader.
+    this.unsubscribe ??= onMix((m) => this.master?.gain.setTargetAtTime(cueGain(m), this.ctx!.currentTime, 0.02));
     if (this.ctx.state !== 'running') await this.ctx.resume();
   }
 
   close(): void {
+    this.unsubscribe?.();
+    this.unsubscribe = null;
     void this.ctx?.close();
     this.ctx = null;
     this.buildupNodes.clear();
@@ -106,8 +113,8 @@ export class AudioOut implements CueOutput {
     const band = ctx.createBiquadFilter();
     band.type = 'bandpass';
     band.Q.value = 1.2;
-    band.frequency.setValueAtTime(2400, start);
-    band.frequency.exponentialRampToValueAtTime(500, start + dur);
+    band.frequency.setValueAtTime(1600, start);
+    band.frequency.exponentialRampToValueAtTime(350, start + dur);
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, start);
     g.gain.exponentialRampToValueAtTime(0.35, start + 0.02);
@@ -133,22 +140,22 @@ export class AudioOut implements CueOutput {
         }
         return;
       case 'skill':
-        return this.note(E5, t, 0.13, { to: A5 * 1.12, bend: 0.07 });
+        return this.note(E4, t, 0.13, { to: A4 * 1.12, bend: 0.07 });
       case 'skillHold':
-        return this.note(E5, t, 0.38, { to: A5 * 1.12, bend: 0.07 });
+        return this.note(E4, t, 0.38, { to: A4 * 1.12, bend: 0.07 });
       case 'burst':
-        [A5, E6, A5, E6].forEach((f, i) => this.note(f, t + i * 0.045, 0.06, { gain: 0.26 }));
-        return this.note(A6, t + 0.18, 0.2, { gain: 0.2 });
+        [A4, E5, A4, E5].forEach((f, i) => this.note(f, t + i * 0.045, 0.06, { gain: 0.26 }));
+        return this.note(A5, t + 0.18, 0.2, { gain: 0.2 });
       case 'na':
-        for (let i = 0; i < Math.min(step.count, 5); i++) this.note(440, t + i * 0.085, 0.055, { type: 'sine', to: 210, gain: 0.34 });
+        for (let i = 0; i < Math.min(step.count, 5); i++) this.note(260, t + i * 0.085, 0.06, { type: 'sine', to: 130, gain: 0.38 });
         return;
       case 'ca':
-        this.note(440, t, 0.055, { type: 'sine', to: 210, gain: 0.34 });
-        return this.note(300, t + 0.075, 0.22, { to: 120, gain: 0.34 });
+        this.note(260, t, 0.06, { type: 'sine', to: 130, gain: 0.38 });
+        return this.note(200, t + 0.075, 0.22, { to: 80, gain: 0.38 });
       case 'dash':
         return this.whoosh(t, 0.15);
       case 'jump':
-        return this.note(380, t, 0.14, { type: 'square', to: 940 });
+        return this.note(220, t, 0.14, { type: 'square', to: 520 });
     }
   }
 
@@ -159,8 +166,8 @@ export class AudioOut implements CueOutput {
     const osc = ctx.createOscillator();
     const g = ctx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(C4, start);
-    osc.frequency.exponentialRampToValueAtTime(C5 * 1.4, due);
+    osc.frequency.setValueAtTime(C3, start);
+    osc.frequency.exponentialRampToValueAtTime(C4 * 1.4, due);
     g.gain.setValueAtTime(0.0001, start);
     g.gain.exponentialRampToValueAtTime(0.09, due - 0.02);
     g.gain.exponentialRampToValueAtTime(0.0001, due + 0.01);
@@ -168,7 +175,7 @@ export class AudioOut implements CueOutput {
     osc.start(start);
     osc.stop(due + 0.03);
     this.track(osc, g);
-    this.note(G5, due, 0.09, { type: 'sine', gain: 0.2, buildup: true });
+    this.note(G4, due, 0.09, { type: 'sine', gain: 0.2, buildup: true });
   }
 
   cutBuildup(): void {
@@ -189,24 +196,24 @@ export class AudioOut implements CueOutput {
     const t = ctx.currentTime;
     switch (name) {
       case 'tick':
-        return this.note(1800, t, 0.03, { type: 'sine', gain: 0.08 });
+        return this.note(900, t, 0.03, { type: 'sine', gain: 0.1 });
       case 'error': // a soft "bonk", not a buzzer
-        return this.note(G4 / 2, t, 0.17, { to: 105, gain: 0.34 });
+        return this.note(G3, t, 0.17, { to: 105, gain: 0.34 });
       case 'offtrack':
-        [G4, E4, C4].forEach((f, i) => this.note(f, t + i * 0.13, i === 2 ? 0.3 : 0.14));
+        [G3, E3, C3].forEach((f, i) => this.note(f, t + i * 0.13, i === 2 ? 0.3 : 0.14));
         return;
       case 'resync':
-        this.note(C5, t, 0.09, { type: 'square' });
-        return this.note(G5, t + 0.08, 0.18, { type: 'square' });
+        this.note(C4, t, 0.09, { type: 'square' });
+        return this.note(G4, t + 0.08, 0.18, { type: 'square' });
       case 'lap':
-        this.note(G5, t, 0.1);
-        return this.note(C6, t + 0.09, 0.2);
+        this.note(G4, t, 0.1);
+        return this.note(C5, t + 0.09, 0.2);
       case 'lapClean':
-        [C5, E5, G5, C6, E6].forEach((f, i) => this.note(f, t + i * 0.06, i === 4 ? 0.28 : 0.08, { type: 'square' }));
+        [C4, E4, G4, C5, E5].forEach((f, i) => this.note(f, t + i * 0.06, i === 4 ? 0.28 : 0.08, { type: 'square' }));
         return;
       case 'done':
-        [C5, E5, G5].forEach((f) => this.note(f, t, 0.6, { gain: 0.16 }));
-        return this.note(C6, t + 0.12, 0.6, { gain: 0.16 });
+        [C4, E4, G4].forEach((f) => this.note(f, t, 0.6, { gain: 0.16 }));
+        return this.note(C5, t + 0.12, 0.6, { gain: 0.16 });
     }
   }
 }

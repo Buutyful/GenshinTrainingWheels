@@ -7,8 +7,21 @@ import { charName, stepLabel } from './notation';
 import { resolveTimings, TimingLearner, timingSig } from './timing';
 import { nowMs, startCapture, type StopCapture } from './platform';
 import { MetricsCollector } from './metrics';
+import { arrange, buildTrack, LapRecorder, validTrack, type CleanLap } from './music/arrange';
+import { TrackPlayer } from './music/player';
 import { isNoise } from './types';
-import type { GameAction, Loadout, RawEvent, SessionSummary, Settings, Slot, Timings } from './types';
+import type { GameAction, Loadout, RawEvent, RhythmTrack, SessionSummary, Settings, Slot, Timings } from './types';
+
+/** Practice: cues follow the player. Rhythm: a backing track the player keeps up with. */
+export type SessionMode = 'practice' | 'rhythm';
+
+export interface MusicSnap {
+  /** Beat in the bar, 0..3. */
+  beat: number;
+  /** 16th in the lap while the track plays, else null. */
+  lapStep: number | null;
+  bars: number;
+}
 
 export interface FeedItem {
   id: number;
@@ -29,6 +42,8 @@ export interface Snapshot {
   activeSlot: Slot;
   /** Time into the current lap, for pacing against the rotation time. */
   lapMs: number;
+  /** Rhythm mode only. */
+  music: MusicSnap | null;
 }
 
 export interface Report {
@@ -39,6 +54,9 @@ export interface Report {
   totals: Totals;
   /** The player's rhythm, updated by this run; null when nothing new was learned. */
   timings: Timings | null;
+  /** Rhythm track from this run's last clean lap, if there was one. */
+  track: RhythmTrack | null;
+  mode: SessionMode;
 }
 
 /** One practice run: wires input capture, interpreter, tracker and audio together. */
@@ -57,13 +75,21 @@ export class Session {
   private timer: ReturnType<typeof setInterval> | undefined;
   private feedId = 0;
   private metrics: MetricsCollector;
+  private recorder: LapRecorder;
+  private player: TrackPlayer | null = null;
+  /** Track built from this run's latest clean lap. */
+  private newTrack: RhythmTrack | null = null;
+  private newTrackMeasured = false;
   readonly targetMs: number | null;
+  /** Rhythm mode: whether a track is playing (false while the first clean lap is recorded). */
+  hasTrack = $state(false);
 
   constructor(
     readonly loadout: Loadout,
     /** A private copy: the director and audio read it live, so guidance can change mid-run. */
     readonly settings: Settings,
     private onStopHotkey: () => void,
+    readonly mode: SessionMode = 'practice',
   ) {
     const loopStart = loadout.loop ? (loadout.loopStart ?? 0) : 0;
     this.steps = flatten(loadout.steps, loadout.loop, loopStart);
@@ -75,7 +101,15 @@ export class Session {
     this.metrics = new MetricsCollector(this.steps, this.tracker, sig, this.targetMs);
     const timings = resolveTimings(loadout.timings, this.steps, sig);
     this.learner = new TimingLearner(this.steps, timings);
+    // In rhythm mode the music is the cue.
+    if (mode === 'rhythm') settings.audio.guidance = 'off';
     this.director = new CueDirector(this.tracker, timings, settings.audio, this.audio);
+    this.recorder = new LapRecorder(this.steps, loadout.loop, (lap) => this.onCleanLap(lap));
+    if (mode === 'rhythm') {
+      const track = validTrack(loadout.track, this.steps, sig);
+      this.player = new TrackPlayer(settings.music, track ? arrange(this.steps, track) : null, loadout.loop);
+      this.hasTrack = !!track;
+    }
     this.snap = this.read(nowMs());
   }
 
@@ -91,6 +125,7 @@ export class Session {
   async start(): Promise<void> {
     try {
       await this.audio.unlock();
+      await this.player?.start();
       this.stopCapture = await startCapture((e) => this.onRaw(e));
     } catch (e) {
       this.error = `Could not start input capture: ${e instanceof Error ? e.message : String(e)}`;
@@ -105,9 +140,11 @@ export class Session {
   /** Stops capturing and returns the run's results. */
   stop(): Report {
     clearInterval(this.timer);
+    this.recorder.flush();
     this.stopCapture?.();
     this.stopCapture = null;
     this.audio.close();
+    this.player?.stop();
     const t = this.tracker;
     const timed = t.laps.filter((l) => !l.aborted);
     const clean = timed.filter((l) => l.clean);
@@ -122,7 +159,7 @@ export class Session {
       metrics: this.metrics.result(),
     };
     const timings = this.learner.learned ? this.learner.timings : null;
-    return { summary, steps: this.steps, stats: t.stats, laps: t.laps, totals: { ...t.totals }, timings };
+    return { summary, steps: this.steps, stats: t.stats, laps: t.laps, totals: { ...t.totals }, timings, track: this.newTrack, mode: this.mode };
   }
 
   restart(): void {
@@ -165,6 +202,7 @@ export class Session {
       elapsedMs: t.startT === null ? 0 : Math.max(0, (t.status === 'done' ? t.lastActivityT : now) - t.startT),
       activeSlot: this.interp.active,
       lapMs: t.status === 'tracking' ? Math.max(0, now - t.lapStartT) : 0,
+      music: this.player?.position() ?? null,
     };
   }
 
@@ -178,7 +216,37 @@ export class Session {
     this.feed = [{ id: ++this.feedId, tone, text }, ...this.feed].slice(0, 6);
   }
 
+  private onCleanLap(lap: CleanLap): void {
+    // A lap cut off by the end of the run has an estimated length; keep a measured one over it.
+    if (lap.next === null && this.newTrackMeasured) return;
+    this.newTrack = buildTrack(this.steps, this.loadout.loop, lap, this.learner.timings);
+    this.newTrackMeasured = lap.next !== null;
+    if (this.player && !this.player.arrangement) {
+      this.player.setArrangement(arrange(this.steps, this.newTrack));
+      this.hasTrack = true;
+      this.push('ok', `Track recorded · ${this.newTrack.bars} bar${this.newTrack.bars === 1 ? '' : 's'} — the music joins on your next step`);
+    }
+  }
+
+  /** Rhythm mode: tells the music where the player is. */
+  private onRhythm(e: TrackerEvent): void {
+    const p = this.player;
+    if (!p) return;
+    let started: { index: number; t: number } | null = null;
+    if (e.kind === 'progress' && e.clicks === 1) started = e;
+    else if (e.kind === 'hit') {
+      const s = this.steps[e.index];
+      if (!(s.action === 'na' && s.count > 1)) started = e;
+    } else if (e.kind === 'offtrack' || e.kind === 'resync' || e.kind === 'done') p.dropActions();
+    if (started) {
+      const pos = p.arrangement?.targets[started.index] ?? -1;
+      p.stepStarted(started.t, pos >= 0 ? pos : null);
+    }
+  }
+
   private onTrackerEvent(e: TrackerEvent): void {
+    this.recorder.onEvent(e);
+    this.onRhythm(e);
     this.learner.onEvent(e);
     this.metrics.onEvent(e);
     this.director.onEvent(e);

@@ -65,11 +65,14 @@ export class Scheduler {
     return this._start;
   }
 
-  /** Starts step 0 at `at` (a little in the future by default so the first beat is not clipped). */
-  begin(at = this.clock.currentTime + 0.06, timer = true): void {
+  /**
+   * Puts step 0 at audio time `at` (a little in the future by default so the first beat is not
+   * clipped) and plays from step `from` on.
+   */
+  begin(at = this.clock.currentTime + 0.06, timer = true, from = 0): void {
     this.stop();
     this._start = at;
-    this.next = 0;
+    this.next = from;
     this._running = true;
     this.tick();
     if (timer) this.timer = setInterval(() => this.tick(), this.intervalMs);

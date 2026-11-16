@@ -1,12 +1,16 @@
 import { defaultData, exampleLoadout, migrate, newId, newLoadout } from './defaults';
 import { exportJson, formatGcsim, formatNotation } from './formats';
 import { backupData, isElevated, loadData, saveData } from './platform';
-import type { AppData, Loadout, SessionSummary, Timings } from './types';
+import { flatten } from './engine';
+import { validTrack } from './music/arrange';
+import type { SessionMode } from './session.svelte';
+import { timingSig } from './timing';
+import type { AppData, Loadout, RhythmTrack, SessionSummary, Timings } from './types';
 
 export type View =
   | { name: 'home' }
   | { name: 'edit'; id: string }
-  | { name: 'session'; id: string }
+  | { name: 'session'; id: string; mode?: SessionMode }
   | { name: 'metrics'; id: string }
   | { name: 'settings' }
   | { name: 'jam' };
@@ -67,11 +71,33 @@ export function deleteLoadout(id: string): void {
   app.data.loadouts = app.data.loadouts.filter((l) => l.id !== id);
 }
 
-export function recordSession(id: string, summary: SessionSummary, timings: Timings | null): void {
+/** The loadout's rhythm track, when it still matches the rotation. */
+export function currentTrack(l: Loadout): RhythmTrack | null {
+  const ls = l.loop ? (l.loopStart ?? 0) : 0;
+  return validTrack(l.track, flatten(l.steps, l.loop, ls), timingSig(l.steps, l.loop, ls));
+}
+
+/**
+ * Saves a run. A clean lap becomes the loadout's rhythm track when it has none yet; returns
+ * whether it did, so the report can offer to replace an existing track instead.
+ */
+export function recordSession(id: string, summary: SessionSummary, timings: Timings | null, track: RhythmTrack | null = null): boolean {
   const l = findLoadout(id);
-  if (!l) return;
+  if (!l) return false;
   if (timings) l.timings = timings;
   l.history = [...l.history, summary].slice(-30);
+  if (track && !currentTrack(l)) {
+    l.track = track;
+    return true;
+  }
+  return false;
+}
+
+export function setTrack(id: string, track: RhythmTrack | null): void {
+  const l = findLoadout(id);
+  if (!l) return;
+  if (track) l.track = track;
+  else delete l.track;
 }
 
 export type ExportFormat = 'notation' | 'gcsim' | 'json';

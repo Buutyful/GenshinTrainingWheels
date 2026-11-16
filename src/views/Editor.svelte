@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Mixer from '../components/Mixer.svelte';
   import Avatar from '../components/Avatar.svelte';
   import CharacterPicker from '../components/CharacterPicker.svelte';
   import { findLoadout, go, saveLoadout } from '../lib/app.svelte';
@@ -136,6 +137,7 @@
   <button onclick={() => go({ name: 'home' })}>Cancel</button>
   <h1>{source ? 'Edit loadout' : 'New loadout'}</h1>
   <div class="spacer"></div>
+  <Mixer />
   <button class="primary" disabled={textErrors.length > 0} onclick={save}>Save</button>
 </header>
 

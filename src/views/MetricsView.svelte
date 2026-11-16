@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Mixer from '../components/Mixer.svelte';
   import Avatar from '../components/Avatar.svelte';
   import RunReport from '../components/RunReport.svelte';
   import TrendChart from '../components/TrendChart.svelte';
@@ -37,6 +38,7 @@
   <button onclick={() => go({ name: 'home' })}>Back</button>
   <h1>{loadout?.name ?? 'Loadout'} — metrics</h1>
   <div class="spacer"></div>
+  <Mixer />
   {#if loadout?.steps.length}<button class="primary" onclick={() => go({ name: 'session', id })}>Practise</button>{/if}
 </header>
 

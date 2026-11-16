@@ -1,6 +1,7 @@
 # Rhythm mode — design brief
 
-Status: **milestone 1 done** (engine + Jam lab), milestones 2–4 open. This is the hand-off
+Status: **milestones 1–2 done** (engine, Jam lab, tracks from clean laps, Rhythm mode on
+Start), milestones 3–4 open. This is the hand-off
 document for building it. Read it whole before writing code; the "Constraints" section is not
 optional.
 
@@ -18,6 +19,57 @@ optional.
   constant, or the calibration clicks must go through the same chain.
 - The Tauri window already disables background timer throttling, so a plain `setInterval`
   drives the scheduler; blob Workers would be blocked by the CSP anyway.
+
+### Milestone 2 notes
+
+- **Decided:** Rhythm is its own mode, picked on Start (Practice / ♪ Rhythm on each loadout card,
+  `View.session.mode`). In Rhythm the arcade cues are off; the music is the cue.
+- `music/arrange.ts`: `LapRecorder` (tracker events → clean laps), `buildTrack` (clean lap →
+  `RhythmTrack`), `arrange` (track → triggers per 16th + `targets[step]` for judging).
+  `music/player.ts`: `TrackPlayer` (live scheduler, alignment to the player).
+- Lap length is measured between the same step in two consecutive laps (the first lap has no
+  opening swap, so it waits for a step it has). A least-squares grid through all presses, tried
+  from two tempo guesses, absorbs ±40 ms per press. Laps are stretched to whole bars; a lap cut
+  off by Stop (length unknown) is never stretched and never replaces a measured one.
+- Stored as `Loadout.track`, keyed by `timingSig`. Recorded automatically from any clean lap
+  (Practice or Rhythm) when the loadout has none; otherwise the results offer "Replace the track".
+  A Rhythm run without a track plays the beat, records from the first clean lap and joins in.
+- Playback: the grid re-phases once to the player's first step; after that the music never
+  waits. Off track / done → only the action layer drops; it rejoins on the next step, snapped to
+  whole beats (`beatOffset`). Openers play beat-only until the loop starts.
+- Mixer: speaker icon in every top bar (`components/Mixer.svelte`): Master (+ mute), Cues,
+  Music. Live through `lib/mix.ts`, so it also works mid-run. Settings: `audio.master`,
+  `audio.muted`; cue level stays `audio.volume`, music level `music.volume`.
+- Arcade cues moved down an octave (and the cue low-pass from 5.2 to 3.8 kHz) on user feedback.
+- Browser practice mode timestamps keys on the main thread; with music playing they are 4–27 ms
+  late. The desktop app's raw-input timestamps do not have this problem.
+
+### Music styles (after user feedback on milestone 2)
+
+User feedback: the cues were not distinct, and the acid techno loop was unbearable after a
+minute. **Decided:** cues and music are separate. Cues (`music/cuelayer.ts`) are one fixed set,
+identical in every style, each with a sharp attack, on their own bus 1.4× above the mixer's Cues
+level; the band ducks ~35 % under each cue. The music is a choice of styles.
+
+- Styles (`music/band.ts`): lo-fi hip-hop (half-time, a 64 BPM feel on the 128 grid), funk /
+  disco, house (programmed four-on-the-floor + Latin/Afro percussion), rock / pop. Chords are all
+  in C major / A minor, like the cue pitches. Bass follows the groove's kicks (or a fixed pattern),
+  keys follow the drummer's swing. A new groove every 4 groove bars (or a fixed one), a fill at
+  each phrase end. `settings.music`: `style`, `groove`, `fills`, `drums`, `bass`, `keys`,
+  `reverb`. The old acid engine (milestone 1) is gone.
+- Drums are real drummers: `scripts/extract-grooves.mjs` turns the Groove MIDI Dataset (Google,
+  CC BY 4.0, credit in README and in the app) into `grooves.json` (29 KB): per style the
+  steadiest 2-bar loops and 1-bar fills, each hit as 16th + velocity + micro-offset (in 16ths, so
+  the feel survives the tempo change). Bar starts are found from where loud kicks and snares fall;
+  backbeat styles require a kick and loud snares on 2 and 4.
+- Tone.js (MIT) runs on a plain browser `AudioContext` / `OfflineAudioContext`: its default
+  wrapper (standardized-audio-context) doubled the cost. Tone's PolySynth/MetalSynth keep their
+  graphs running per voice and were far too heavy next to a game, so keys, bass and cymbals are
+  per-note Web Audio graphs; Tone provides membranes (kick, toms, snare body), reverb, filter and
+  compressors. Offline render speed is now 3.6–6.8× real time. A hard compressor (ratio 20,
+  1 ms attack) is the last stage; renders peak at −0.4 to −0.9 dB without clipping.
+- Tone's mono voices throw on out-of-order hits; drum hits are sorted per 16th and clamped per
+  voice.
 
 ## The idea in one paragraph
 
@@ -174,6 +226,6 @@ The agent cannot hear audio. Check what can be checked, leave taste to the user:
 
 ## Open questions for the user
 
-- Rhythm mode as a separate "Mode" on Start, or a fourth `guidance` value?
+- ~~Rhythm mode as a separate "Mode" on Start, or a fourth `guidance` value?~~ Separate mode (decided).
 - Should a miss restart the bar, or always keep going (current plan: keep going)?
 - Volume balance music vs. judgement sounds — default 70/30?

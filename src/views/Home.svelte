@@ -1,12 +1,17 @@
 <script lang="ts">
+  import Mixer from '../components/Mixer.svelte';
   import Avatar from '../components/Avatar.svelte';
   import Track from '../components/Track.svelte';
-  import { addImported, app, createLoadout, deleteLoadout, duplicateLoadout, exportLoadout, go, type ExportFormat } from '../lib/app.svelte';
+  import { onDestroy } from 'svelte';
+  import { addImported, app, createLoadout, currentTrack, deleteLoadout, duplicateLoadout, exportLoadout, go, type ExportFormat } from '../lib/app.svelte';
+  import { arrange } from '../lib/music/arrange';
+  import { TrackPlayer } from '../lib/music/player';
+  import type { Loadout } from '../lib/types';
   import { flatten } from '../lib/engine';
   import { IMPORT_EXAMPLES } from '../lib/examples';
   import { importAny } from '../lib/formats';
   import { pct, secs } from '../lib/format';
-  import { isTauri, relaunchAsAdmin } from '../lib/platform';
+  import { isTauri, nowMs, relaunchAsAdmin } from '../lib/platform';
 
   type Dialog = { mode: 'export'; id: string; format: ExportFormat } | { mode: 'import'; text: string };
   let dialog = $state<Dialog | null>(null);
@@ -22,6 +27,32 @@
 
   const preview = $derived(dialog?.mode === 'import' && dialog.text.trim() ? importAny(dialog.text) : null);
   const exported = $derived(dialog?.mode === 'export' ? exportLoadout(dialog.id, dialog.format) : '');
+
+  // Preview of a loadout's rhythm track.
+  let listening = $state<string | null>(null);
+  let player: TrackPlayer | null = null;
+  function stopListening() {
+    player?.stop();
+    player = null;
+    listening = null;
+  }
+  async function listen(l: Loadout) {
+    const wasThis = listening === l.id;
+    stopListening();
+    const track = currentTrack(l);
+    if (wasThis || !track) return;
+    const steps = flatten(l.steps, l.loop, l.loop ? (l.loopStart ?? 0) : 0);
+    const p = new TrackPlayer(app.data.settings.music, arrange(steps, track), true);
+    player = p;
+    listening = l.id;
+    await p.start();
+    if (player === p) p.stepStarted(nowMs(), 0);
+  }
+  onDestroy(stopListening);
+  const ago = (t: number) => {
+    const d = Math.round((Date.now() - t) / 86400000);
+    return d <= 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`;
+  };
 
   async function copy(text: string) {
     await navigator.clipboard.writeText(text).catch(() => {});
@@ -40,6 +71,7 @@
 <header class="bar">
   <h1>Genshin Training Wheels</h1>
   <div class="spacer"></div>
+  <Mixer />
   <button onclick={() => (dialog = { mode: 'import', text: '' })}>Import</button>
   <button onclick={() => go({ name: 'settings' })}>Settings</button>
   <button class="primary" onclick={() => createLoadout()}>New loadout</button>
@@ -100,8 +132,20 @@
               Not practised yet
             {/if}
           </p>
-          <div class="row">
-            <button class="primary" disabled={!l.steps.length} onclick={() => go({ name: 'session', id: l.id })}>Start</button>
+          {#if l.steps.length}
+            {@const track = currentTrack(l)}
+            <div class="track-line small">
+              {#if track}
+                <span>♪ Rhythm track · {track.bars} bar{track.bars === 1 ? '' : 's'} at {track.bpm} BPM · recorded {ago(track.recordedAt)}</span>
+                <button class="ghost" onclick={() => listen(l)}>{listening === l.id ? '■ Stop' : '▶ Listen'}</button>
+              {:else}
+                <span class="muted">♪ No rhythm track yet. Your first clean lap records one.</span>
+              {/if}
+            </div>
+          {/if}
+          <div class="row wrap">
+            <button class="primary" disabled={!l.steps.length} title="Audio cues guide you and wait for you" onclick={() => go({ name: 'session', id: l.id, mode: 'practice' })}>Practice</button>
+            <button class="rhythm" disabled={!l.steps.length} title="Play over a backing track made from your own clean lap" onclick={() => { stopListening(); go({ name: 'session', id: l.id, mode: 'rhythm' }); }}>♪ Rhythm</button>
             <button onclick={() => go({ name: 'edit', id: l.id })}>Edit</button>
             <button disabled={!l.history.length} onclick={() => go({ name: 'metrics', id: l.id })}>Metrics</button>
             <div class="spacer"></div>

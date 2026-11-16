@@ -1,17 +1,19 @@
 <script lang="ts">
+  import Mixer from '../components/Mixer.svelte';
   import { onDestroy, onMount } from 'svelte';
   import Avatar from '../components/Avatar.svelte';
   import RunReport from '../components/RunReport.svelte';
   import Track from '../components/Track.svelte';
-  import { app, findLoadout, go, recordSession } from '../lib/app.svelte';
+  import { app, currentTrack, findLoadout, go, recordSession, setTrack } from '../lib/app.svelte';
   import { clock, pct } from '../lib/format';
   import { prettyCode } from '../lib/keycodes';
   import { charName, stepLabel } from '../lib/notation';
   import { isTauri, setCompact } from '../lib/platform';
-  import { Session, type Report } from '../lib/session.svelte';
-  import type { Guidance, SessionSummary } from '../lib/types';
+  import { Session, type Report, type SessionMode } from '../lib/session.svelte';
+  import { STYLE_IDS, STYLES } from '../lib/music/band';
+  import type { Guidance, MusicStyle, SessionSummary } from '../lib/types';
 
-  let { id }: { id: string } = $props();
+  let { id, mode = 'practice' }: { id: string; mode?: SessionMode } = $props();
 
   // svelte-ignore state_referenced_locally -- the parent re-creates this view per loadout
   const found = findLoadout(id);
@@ -23,11 +25,19 @@
   let lastRun = $state.raw<SessionSummary | null>(null);
   let compact = $state(false);
   let guidance = $state<Guidance>(app.data.settings.audio.guidance);
+  /** Whether this run's clean lap became the loadout's rhythm track. */
+  let trackSaved = $state(false);
+  let trackReplaced = $state(false);
 
   function begin() {
     if (!loadout) return;
     report = null;
-    const s = new Session(loadout, $state.snapshot(app.data.settings), finish);
+    trackSaved = false;
+    trackReplaced = false;
+    // Fresh copy: the previous run may have saved a rhythm track or new timings.
+    const now = findLoadout(id);
+    if (!now) return;
+    const s = new Session($state.snapshot(now), $state.snapshot(app.data.settings), finish, mode);
     session = s;
     void s.start();
   }
@@ -36,7 +46,7 @@
     if (!session) return;
     const r = session.stop();
     session = null;
-    if (r.summary.durationMs > 0) recordSession(id, r.summary, r.timings);
+    if (r.summary.durationMs > 0) trackSaved = recordSession(id, r.summary, r.timings, r.track);
     report = r;
     lastRun = r.summary;
     applyCompact(false);
@@ -47,6 +57,18 @@
     compact = on;
     document.body.classList.toggle('compact-mode', on);
     void setCompact(on);
+  }
+
+  let musicStyle = $state<MusicStyle>(app.data.settings.music.style);
+  /** Changing the style mid-run is heard on the next 16th; the cues stay the same. */
+  function setStyle(st: MusicStyle) {
+    musicStyle = st;
+    app.data.settings.music.style = st;
+    app.data.settings.music.groove = -1;
+    if (session) {
+      session.settings.music.style = st;
+      session.settings.music.groove = -1;
+    }
   }
 
   function setGuidance(g: Guidance) {
@@ -86,12 +108,25 @@
       <span><b>{clock(s.elapsedMs)}</b></span>
       <span><b>{pct(s.accuracy)}</b> accuracy</span>
     </div>
+    {#if mode === 'rhythm'}
+      <span class="pill rhythm" title="Rhythm mode">
+        ♪ {session.hasTrack ? `Rhythm · ${s.music?.bars ?? ''} bar${s.music?.bars === 1 ? '' : 's'}` : 'Recording track'}
+      </span>
+      <select class="hide-compact" value={musicStyle} onchange={(e) => setStyle(e.currentTarget.value as MusicStyle)} aria-label="Music style">
+        {#each STYLE_IDS as id (id)}<option value={id}>♪ {STYLES[id].label}</option>{/each}
+      </select>
+      <div class="beats hide-compact" aria-hidden="true">
+        {#each [0, 1, 2, 3] as b (b)}<span class:on={s.music?.beat === b} class:one={b === 0}></span>{/each}
+      </div>
+    {:else}
     <select class="hide-compact" value={guidance} onchange={(e) => setGuidance(e.currentTarget.value as Guidance)} aria-label="Audio guidance">
       <option value="adaptive">Audio: only when late</option>
       <option value="full">Audio: every step</option>
       <option value="swaps">Audio: swaps only</option>
       <option value="off">Audio: off</option>
     </select>
+    {/if}
+    <Mixer compactHidden />
     <button class="hide-compact" onclick={() => session?.restart()}>Restart</button>
     {#if isTauri}<button onclick={() => applyCompact(!compact)}>{compact ? 'Expand' : 'Overlay'}</button>{/if}
   </header>
@@ -135,6 +170,21 @@
       </div>
     </section>
 
+    {#if mode === 'rhythm'}
+      <div class="pace rhythm-bar">
+        {#if !session.hasTrack}
+          <span class="muted">No rhythm track yet. Play one <b>clean lap</b> over the beat; the music builds from it and joins on your next step.</span>
+        {:else if s.music?.lapStep != null}
+          {@const len = s.music.bars * 16}
+          <span>Bar <b>{Math.floor(s.music.lapStep / 16) + 1}</b> / {s.music.bars}</span>
+          <div class="bar-track"><div class="bar-fill" style:width="{((s.music.lapStep + 1) / len) * 100}%"></div></div>
+          <span class="muted">the music keeps going: stay with it</span>
+        {:else}
+          <span class="muted">{s.status === 'armed' ? 'The track starts on your first step.' : 'Beat only. The track comes back when you are on a step again.'}</span>
+        {/if}
+      </div>
+    {/if}
+
     {#if session.targetMs && s.status === 'tracking'}
       {@const over = s.lapMs > session.targetMs}
       <div class="pace" class:over>
@@ -163,8 +213,10 @@
   {@const sum = report.summary}
   <header class="bar">
     <button onclick={() => go({ name: 'home' })}>Back</button>
-    <h1>{loadout.name} — results</h1>
+    <h1>{loadout.name} — {mode === 'rhythm' ? 'rhythm ' : ''}results</h1>
     <div class="spacer"></div>
+    <Mixer />
+    {#if mode === 'practice'}<button onclick={() => go({ name: 'session', id, mode: 'rhythm' })}>♪ Rhythm</button>{/if}
     <button class="primary" onclick={begin}>Run again</button>
   </header>
 
@@ -172,6 +224,29 @@
     {#if sum.durationMs === 0 || !lastRun}
       <div class="empty"><h2>Nothing recorded</h2><p>The run was stopped before the first step.</p></div>
     {:else}
+      {@const found2 = findLoadout(id)}
+      {#if report.track && trackSaved}
+        <div class="notice">
+          <div><strong>Rhythm track recorded.</strong> Your last clean lap became a {report.track.bars}-bar track for this loadout.</div>
+          {#if mode === 'practice'}<button class="primary" onclick={() => go({ name: 'session', id, mode: 'rhythm' })}>Play it in Rhythm</button>{/if}
+        </div>
+      {:else if report.track && found2 && currentTrack(found2)}
+        <div class="notice">
+          <div>
+            {#if trackReplaced}
+              <strong>Rhythm track replaced</strong> with this run's last clean lap ({report.track.bars} bars).
+            {:else}
+              This run had a clean lap. Use it as the rhythm track? The current one has {currentTrack(found2)!.bars} bars; this one
+              {report.track.bars}.
+            {/if}
+          </div>
+          {#if !trackReplaced}
+            <button onclick={() => { setTrack(id, report!.track); trackReplaced = true; }}>Replace the track</button>
+          {/if}
+        </div>
+      {:else if !report.track && found2 && !currentTrack(found2)}
+        <div class="notice"><div>No clean lap this run, so no rhythm track yet. One clean lap records it.</div></div>
+      {/if}
       <RunReport {loadout} run={lastRun} />
       <div class="row center">
         <button onclick={() => go({ name: 'metrics', id })}>All metrics for this loadout</button>
