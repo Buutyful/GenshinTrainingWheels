@@ -285,7 +285,8 @@ describe('notation', () => {
     const text = 'Raiden: E > Xingqiu: E Q > Bennett: Q hE > Raiden: Q N3 CA Dash Jump';
     const { steps, errors } = parseRotation(text, team);
     expect(errors).toEqual([]);
-    expect(formatRotation(steps, team)).toBe(text);
+    expect(formatRotation(steps, team)).toBe('Raiden E > Xingqiu EQ > Bennett QhE > Raiden QN3CDJ');
+    expect(parseRotation(formatRotation(steps, team), team).steps).toEqual(steps);
   });
 
   it('accepts slot numbers, prefixes and combo shorthand, and reports what it cannot read', () => {

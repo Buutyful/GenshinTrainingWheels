@@ -11,6 +11,8 @@ export type ActionType = StepAction | 'swap';
 export interface Character {
   name: string;
   element: Element;
+  /** Roster id (also the portrait's file name); absent for names the roster does not know. */
+  id?: string;
 }
 
 export interface RotationStep {
@@ -18,6 +20,40 @@ export interface RotationStep {
   action: StepAction;
   /** Number of normal attacks, only meaningful for `na`. */
   count?: number;
+}
+
+/** What one character did during a run. */
+export interface CharMetrics {
+  /** Time on field while the rotation was being tracked. */
+  fieldMs: number;
+  /** Inputs made on this character; `na` counts clicks. */
+  actions: Partial<Record<StepAction, number>>;
+  /** Judged steps of this character: done, skipped, and wrong inputs made while on it. */
+  hits: number;
+  missed: number;
+  wrong: number;
+  /** Times this character came on field. */
+  entries: number;
+}
+
+export interface LapMetric {
+  ms: number;
+  clean: boolean;
+  errors: number;
+}
+
+export interface RunMetrics {
+  chars: CharMetrics[];
+  laps: LapMetric[];
+  /** Rotation time the loadout aimed for, when set. */
+  targetMs: number | null;
+  trackedMs: number;
+  offTrackMs: number;
+  pausedMs: number;
+  swaps: number;
+  inputs: number;
+  /** Per flattened step, so the metrics view can say which steps keep going wrong. */
+  steps: { sig: string; missed: number[]; wrong: number[] };
 }
 
 export interface SessionSummary {
@@ -28,14 +64,20 @@ export interface SessionSummary {
   accuracy: number;
   bestLapMs: number | null;
   avgLapMs: number | null;
+  metrics?: RunMetrics;
 }
 
 export interface Loadout {
   id: string;
   name: string;
   characters: Character[];
+  /** Opener steps first, then the looping part; see `loopStart`. */
   steps: RotationStep[];
+  /** Index in `steps` where the looping part begins (0: the whole rotation loops). */
+  loopStart?: number;
   loop: boolean;
+  /** How long one rotation should take, in seconds. */
+  rotationSec?: number | null;
   history: SessionSummary[];
   timings?: Timings;
 }

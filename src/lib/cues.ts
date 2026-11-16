@@ -103,7 +103,7 @@ export class CueDirector {
 
     const p = t.pointer;
     const inProgress = t.naClicks > 0;
-    const prev = (p - 1 + n) % n;
+    const prev = t.prevIndex(p);
     // The moment the pending step should start (or, for a started attack string, finish).
     const expected = inProgress ? t.stepStartT + this.timings.span[p] : t.lastProgressT + this.timings.gap[prev];
 
@@ -140,7 +140,7 @@ export class CueDirector {
       start = landed + this.timings.gap[j];
       if (++j >= n) {
         if (!t.loop) break;
-        j = 0;
+        j = t.loopStart;
         lap++;
       }
     }

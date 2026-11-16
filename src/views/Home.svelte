@@ -1,14 +1,27 @@
 <script lang="ts">
+  import Avatar from '../components/Avatar.svelte';
   import Track from '../components/Track.svelte';
-  import { app, createLoadout, deleteLoadout, duplicateLoadout, exportLoadout, go, importLoadout } from '../lib/app.svelte';
+  import { addImported, app, createLoadout, deleteLoadout, duplicateLoadout, exportLoadout, go, type ExportFormat } from '../lib/app.svelte';
   import { flatten } from '../lib/engine';
+  import { IMPORT_EXAMPLES } from '../lib/examples';
+  import { importAny } from '../lib/formats';
   import { pct, secs } from '../lib/format';
   import { isTauri, relaunchAsAdmin } from '../lib/platform';
 
-  type Dialog = { mode: 'export'; text: string } | { mode: 'import'; text: string; error: string | null };
+  type Dialog = { mode: 'export'; id: string; format: ExportFormat } | { mode: 'import'; text: string };
   let dialog = $state<Dialog | null>(null);
   let confirming = $state<string | null>(null);
   let copied = $state(false);
+  let example = $state<string | null>(null);
+
+  const FORMATS: { id: ExportFormat; label: string; hint: string }[] = [
+    { id: 'notation', label: 'Rotation text', hint: 'KQM / Hexenzirkel notation. Paste it anywhere people share rotations.' },
+    { id: 'gcsim', label: 'gcsim', hint: 'The action list of a gcsim config. Add char, weapon and set lines to simulate it.' },
+    { id: 'json', label: 'Full loadout', hint: 'Everything, for importing into Genshin Training Wheels on another PC.' },
+  ];
+
+  const preview = $derived(dialog?.mode === 'import' && dialog.text.trim() ? importAny(dialog.text) : null);
+  const exported = $derived(dialog?.mode === 'export' ? exportLoadout(dialog.id, dialog.format) : '');
 
   async function copy(text: string) {
     await navigator.clipboard.writeText(text).catch(() => {});
@@ -17,17 +30,17 @@
   }
 
   function doImport() {
-    if (dialog?.mode !== 'import') return;
-    const error = importLoadout(dialog.text);
-    if (error) dialog.error = error;
-    else dialog = null;
+    if (!preview?.loadout) return;
+    const id = addImported(preview.loadout);
+    dialog = null;
+    go({ name: 'edit', id });
   }
 </script>
 
 <header class="bar">
   <h1>Genshin Training Wheels</h1>
   <div class="spacer"></div>
-  <button onclick={() => (dialog = { mode: 'import', text: '', error: null })}>Import</button>
+  <button onclick={() => (dialog = { mode: 'import', text: '' })}>Import</button>
   <button onclick={() => go({ name: 'settings' })}>Settings</button>
   <button class="primary" onclick={() => createLoadout()}>New loadout</button>
 </header>
@@ -51,9 +64,10 @@
   {#if app.data.loadouts.length === 0}
     <div class="empty">
       <h2>No loadouts yet</h2>
-      <p>A loadout is a team of four and the rotation you want to drill.</p>
+      <p>A loadout is a team of four and the rotation you want to drill. Paste one from a leaderboard, KQM or gcsim with Import.</p>
       <div class="row center">
         <button class="primary" onclick={() => createLoadout()}>Create a loadout</button>
+        <button onclick={() => (dialog = { mode: 'import', text: '' })}>Import</button>
         <button onclick={() => createLoadout(true)}>Add an example</button>
       </div>
     </div>
@@ -64,11 +78,18 @@
         {@const best = l.history.reduce<number | null>((m, h) => (h.bestLapMs !== null && (m === null || h.bestLapMs < m) ? h.bestLapMs : m), null)}
         <article class="card">
           <div class="card-head">
-            <h3>{l.name || 'Untitled'}</h3>
-            <span class="tag">{l.loop ? 'Loop' : 'One-shot'}</span>
+            <div class="team-strip">
+              {#each l.characters as c, i (i)}<Avatar character={c} size={36} />{/each}
+            </div>
+            <div class="title">
+              <h3>{l.name || 'Untitled'}</h3>
+              <span class="muted small">
+                {l.loop ? ((l.loopStart ?? 0) > 0 ? 'Opener + loop' : 'Loop') : 'One-shot'}{#if l.rotationSec}{' · '}{l.rotationSec}s rotation{/if}
+              </span>
+            </div>
           </div>
           {#if l.steps.length}
-            <Track steps={flatten(l.steps, false)} characters={l.characters} compact />
+            <Track steps={flatten(l.steps, l.loop, l.loop ? (l.loopStart ?? 0) : 0)} characters={l.characters} compact />
           {:else}
             <p class="muted">No rotation yet — edit this loadout to add one.</p>
           {/if}
@@ -82,15 +103,16 @@
           <div class="row">
             <button class="primary" disabled={!l.steps.length} onclick={() => go({ name: 'session', id: l.id })}>Start</button>
             <button onclick={() => go({ name: 'edit', id: l.id })}>Edit</button>
+            <button disabled={!l.history.length} onclick={() => go({ name: 'metrics', id: l.id })}>Metrics</button>
             <div class="spacer"></div>
             {#if confirming === l.id}
               <span class="muted small">Delete?</span>
               <button class="danger" onclick={() => deleteLoadout(l.id)}>Yes</button>
               <button onclick={() => (confirming = null)}>No</button>
             {:else}
-              <button class="ghost" title="Duplicate" onclick={() => duplicateLoadout(l.id)}>Duplicate</button>
-              <button class="ghost" title="Export" onclick={() => (dialog = { mode: 'export', text: exportLoadout(l.id) })}>Export</button>
-              <button class="ghost" title="Delete" onclick={() => (confirming = l.id)}>Delete</button>
+              <button class="ghost" onclick={() => duplicateLoadout(l.id)}>Duplicate</button>
+              <button class="ghost" onclick={() => (dialog = { mode: 'export', id: l.id, format: 'notation' })}>Export</button>
+              <button class="ghost" onclick={() => (confirming = l.id)}>Delete</button>
             {/if}
           </div>
         </article>
@@ -103,21 +125,72 @@
   <div class="scrim" role="presentation" onclick={(e) => e.target === e.currentTarget && (dialog = null)}>
     <div class="dialog" role="dialog" aria-modal="true">
       {#if dialog.mode === 'export'}
+        {@const d = dialog}
         <h2>Export loadout</h2>
-        <p class="muted">Share this text; anyone can paste it into Import.</p>
-        <textarea readonly rows="12" value={dialog.text}></textarea>
+        <div class="tabs" role="tablist">
+          {#each FORMATS as f (f.id)}
+            <button class:on={d.format === f.id} onclick={() => (d.format = f.id)}>{f.label}</button>
+          {/each}
+        </div>
+        <p class="muted">{FORMATS.find((f) => f.id === d.format)?.hint}</p>
+        <textarea readonly rows="10" value={exported}></textarea>
         <div class="row end">
           <button onclick={() => (dialog = null)}>Close</button>
-          <button class="primary" onclick={() => dialog && copy(dialog.text)}>{copied ? 'Copied' : 'Copy'}</button>
+          <button class="primary" onclick={() => copy(exported)}>{copied ? 'Copied' : 'Copy'}</button>
         </div>
       {:else}
-        <h2>Import loadout</h2>
-        <p class="muted">Paste a loadout exported from Genshin Training Wheels.</p>
-        <textarea rows="12" bind:value={dialog.text} placeholder="Paste the exported text here"></textarea>
-        {#if dialog.error}<p class="error">{dialog.error}</p>{/if}
+        {@const d = dialog}
+        <h2>Import a rotation</h2>
+        <p class="muted">
+          Paste a rotation you found somewhere, or open a file. The app recognises the format by itself. Not sure what to paste? Pick a kind below
+          to see where to find it and try an example.
+        </p>
+        <div class="tabs examples" role="tablist">
+          {#each IMPORT_EXAMPLES as ex (ex.id)}
+            <button class:on={example === ex.id} onclick={() => (example = example === ex.id ? null : ex.id)}>{ex.label}</button>
+          {/each}
+        </div>
+        {#if example}
+          {@const ex = IMPORT_EXAMPLES.find((e) => e.id === example)!}
+          <div class="howto">
+            <p>{ex.where}</p>
+            <pre>{ex.text}</pre>
+            <button onclick={() => (d.text = ex.text)}>Use this example</button>
+          </div>
+        {/if}
+        <textarea rows="8" bind:value={dialog.text} placeholder="Paste here, e.g.  Raiden E > Xingqiu EQ > Bennett QE > Xiangling QE > Raiden Q N3C N3C" spellcheck="false"></textarea>
+        <div class="row">
+          <label class="file-btn">
+            <input
+              type="file"
+              accept=".json,.txt,.cfg,.gcsim,text/plain,application/json"
+              onchange={async (e) => {
+                const f = e.currentTarget.files?.[0];
+                if (f) d.text = await f.text();
+              }}
+            />
+            Open file…
+          </label>
+          <span class="muted small">A Genshin Optimizer .json, a gcsim config, or a loadout exported from this app.</span>
+        </div>
+        {#if preview}
+          <div class="import-preview">
+            <span class="muted small">Read as <b>{preview.format}</b></span>
+            {#if preview.loadout}
+              {@const l = preview.loadout}
+              <Track steps={flatten(l.steps, l.loop, l.loopStart ?? 0)} characters={l.characters} compact />
+              <span class="muted small">
+                {l.steps.length} actions{#if l.rotationSec}{' · '}{l.rotationSec}s rotation{/if}{#if (l.loopStart ?? 0) > 0}{' · '}different first rotation{/if}. Team order follows
+                the order characters first appear in; you can reorder them next.
+              </span>
+            {/if}
+            {#each preview.errors as err (err)}<p class="error small">{err}</p>{/each}
+            {#each preview.notes as n (n)}<p class="muted small">{n}</p>{/each}
+          </div>
+        {/if}
         <div class="row end">
           <button onclick={() => (dialog = null)}>Cancel</button>
-          <button class="primary" disabled={!dialog.text.trim()} onclick={doImport}>Import</button>
+          <button class="primary" disabled={!preview?.loadout} onclick={doImport}>Import and review</button>
         </div>
       {/if}
     </div>

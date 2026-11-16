@@ -1,0 +1,1539 @@
+[
+ {
+  "id": "jean",
+  "name": "Jean",
+  "key": "Jean",
+  "element": "anemo",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "jean"
+  ]
+ },
+ {
+  "id": "lisa",
+  "name": "Lisa",
+  "key": "Lisa",
+  "element": "electro",
+  "weapon": "catalyst",
+  "rarity": 4,
+  "aliases": [
+   "lisa"
+  ]
+ },
+ {
+  "id": "barbara",
+  "name": "Barbara",
+  "key": "Barbara",
+  "element": "hydro",
+  "weapon": "catalyst",
+  "rarity": 4,
+  "aliases": [
+   "barb",
+   "barbara"
+  ]
+ },
+ {
+  "id": "kaeya",
+  "name": "Kaeya",
+  "key": "Kaeya",
+  "element": "cryo",
+  "weapon": "sword",
+  "rarity": 4,
+  "aliases": [
+   "kaeya"
+  ]
+ },
+ {
+  "id": "diluc",
+  "name": "Diluc",
+  "key": "Diluc",
+  "element": "pyro",
+  "weapon": "claymore",
+  "rarity": 5,
+  "aliases": [
+   "diluc"
+  ]
+ },
+ {
+  "id": "razor",
+  "name": "Razor",
+  "key": "Razor",
+  "element": "electro",
+  "weapon": "claymore",
+  "rarity": 4,
+  "aliases": [
+   "razor"
+  ]
+ },
+ {
+  "id": "amber",
+  "name": "Amber",
+  "key": "Amber",
+  "element": "pyro",
+  "weapon": "bow",
+  "rarity": 4,
+  "aliases": [
+   "amber"
+  ]
+ },
+ {
+  "id": "venti",
+  "name": "Venti",
+  "key": "Venti",
+  "element": "anemo",
+  "weapon": "bow",
+  "rarity": 5,
+  "aliases": [
+   "venti"
+  ]
+ },
+ {
+  "id": "xiangling",
+  "name": "Xiangling",
+  "key": "Xiangling",
+  "element": "pyro",
+  "weapon": "polearm",
+  "rarity": 4,
+  "aliases": [
+   "xiangling",
+   "xl"
+  ]
+ },
+ {
+  "id": "beidou",
+  "name": "Beidou",
+  "key": "Beidou",
+  "element": "electro",
+  "weapon": "claymore",
+  "rarity": 4,
+  "aliases": [
+   "beidou"
+  ]
+ },
+ {
+  "id": "xingqiu",
+  "name": "Xingqiu",
+  "key": "Xingqiu",
+  "element": "hydro",
+  "weapon": "sword",
+  "rarity": 4,
+  "aliases": [
+   "xingqiu",
+   "xq"
+  ]
+ },
+ {
+  "id": "ningguang",
+  "name": "Ningguang",
+  "key": "Ningguang",
+  "element": "geo",
+  "weapon": "catalyst",
+  "rarity": 4,
+  "aliases": [
+   "ning",
+   "ningguang"
+  ]
+ },
+ {
+  "id": "klee",
+  "name": "Klee",
+  "key": "Klee",
+  "element": "pyro",
+  "weapon": "catalyst",
+  "rarity": 5,
+  "aliases": [
+   "klee"
+  ]
+ },
+ {
+  "id": "fischl",
+  "name": "Fischl",
+  "key": "Fischl",
+  "element": "electro",
+  "weapon": "bow",
+  "rarity": 4,
+  "aliases": [
+   "amy",
+   "fischl",
+   "fish"
+  ]
+ },
+ {
+  "id": "bennett",
+  "name": "Bennett",
+  "key": "Bennett",
+  "element": "pyro",
+  "weapon": "sword",
+  "rarity": 4,
+  "aliases": [
+   "bennett"
+  ]
+ },
+ {
+  "id": "noelle",
+  "name": "Noelle",
+  "key": "Noelle",
+  "element": "geo",
+  "weapon": "claymore",
+  "rarity": 4,
+  "aliases": [
+   "noelle"
+  ]
+ },
+ {
+  "id": "qiqi",
+  "name": "Qiqi",
+  "key": "Qiqi",
+  "element": "cryo",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "qiqi"
+  ]
+ },
+ {
+  "id": "chongyun",
+  "name": "Chongyun",
+  "key": "Chongyun",
+  "element": "cryo",
+  "weapon": "claymore",
+  "rarity": 4,
+  "aliases": [
+   "chong",
+   "chongyun"
+  ]
+ },
+ {
+  "id": "mona",
+  "name": "Mona",
+  "key": "Mona",
+  "element": "hydro",
+  "weapon": "catalyst",
+  "rarity": 5,
+  "aliases": [
+   "mona"
+  ]
+ },
+ {
+  "id": "keqing",
+  "name": "Keqing",
+  "key": "Keqing",
+  "element": "electro",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "keq",
+   "keqing"
+  ]
+ },
+ {
+  "id": "sucrose",
+  "name": "Sucrose",
+  "key": "Sucrose",
+  "element": "anemo",
+  "weapon": "catalyst",
+  "rarity": 4,
+  "aliases": [
+   "sucrose"
+  ]
+ },
+ {
+  "id": "traveler-anemo",
+  "name": "Traveler (Anemo)",
+  "key": "TravelerAnemo",
+  "element": "anemo",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "aetheranemo",
+   "lumineanemo",
+   "mcanemo",
+   "traveleranemo"
+  ]
+ },
+ {
+  "id": "traveler-geo",
+  "name": "Traveler (Geo)",
+  "key": "TravelerGeo",
+  "element": "geo",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "aethergeo",
+   "luminegeo",
+   "mcgeo",
+   "travelergeo"
+  ]
+ },
+ {
+  "id": "tartaglia",
+  "name": "Tartaglia",
+  "key": "Tartaglia",
+  "element": "hydro",
+  "weapon": "bow",
+  "rarity": 5,
+  "aliases": [
+   "ajax",
+   "childe",
+   "tartaglia"
+  ]
+ },
+ {
+  "id": "diona",
+  "name": "Diona",
+  "key": "Diona",
+  "element": "cryo",
+  "weapon": "bow",
+  "rarity": 4,
+  "aliases": [
+   "diona"
+  ]
+ },
+ {
+  "id": "zhongli",
+  "name": "Zhongli",
+  "key": "Zhongli",
+  "element": "geo",
+  "weapon": "polearm",
+  "rarity": 5,
+  "aliases": [
+   "zhong",
+   "zhongli",
+   "zl"
+  ]
+ },
+ {
+  "id": "xinyan",
+  "name": "Xinyan",
+  "key": "Xinyan",
+  "element": "pyro",
+  "weapon": "claymore",
+  "rarity": 4,
+  "aliases": [
+   "xinyan"
+  ]
+ },
+ {
+  "id": "albedo",
+  "name": "Albedo",
+  "key": "Albedo",
+  "element": "geo",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "albedo"
+  ]
+ },
+ {
+  "id": "ganyu",
+  "name": "Ganyu",
+  "key": "Ganyu",
+  "element": "cryo",
+  "weapon": "bow",
+  "rarity": 5,
+  "aliases": [
+   "ganyu"
+  ]
+ },
+ {
+  "id": "xiao",
+  "name": "Xiao",
+  "key": "Xiao",
+  "element": "anemo",
+  "weapon": "polearm",
+  "rarity": 5,
+  "aliases": [
+   "xiao"
+  ]
+ },
+ {
+  "id": "hu-tao",
+  "name": "Hu Tao",
+  "key": "HuTao",
+  "element": "pyro",
+  "weapon": "polearm",
+  "rarity": 5,
+  "aliases": [
+   "ht",
+   "hutao",
+   "tao"
+  ]
+ },
+ {
+  "id": "rosaria",
+  "name": "Rosaria",
+  "key": "Rosaria",
+  "element": "cryo",
+  "weapon": "polearm",
+  "rarity": 4,
+  "aliases": [
+   "rosa",
+   "rosaria"
+  ]
+ },
+ {
+  "id": "yanfei",
+  "name": "Yanfei",
+  "key": "Yanfei",
+  "element": "pyro",
+  "weapon": "catalyst",
+  "rarity": 4,
+  "aliases": [
+   "yanfei"
+  ]
+ },
+ {
+  "id": "eula",
+  "name": "Eula",
+  "key": "Eula",
+  "element": "cryo",
+  "weapon": "claymore",
+  "rarity": 5,
+  "aliases": [
+   "eula"
+  ]
+ },
+ {
+  "id": "kaedehara-kazuha",
+  "name": "Kaedehara Kazuha",
+  "key": "KaedeharaKazuha",
+  "element": "anemo",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "kaedeharakazuha",
+   "kaz",
+   "kazuha",
+   "kz"
+  ]
+ },
+ {
+  "id": "kamisato-ayaka",
+  "name": "Kamisato Ayaka",
+  "key": "KamisatoAyaka",
+  "element": "cryo",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "ayaka",
+   "kamisatoayaka"
+  ]
+ },
+ {
+  "id": "traveler-electro",
+  "name": "Traveler (Electro)",
+  "key": "TravelerElectro",
+  "element": "electro",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "aetherelectro",
+   "lumineelectro",
+   "mcelectro",
+   "travelerelectro"
+  ]
+ },
+ {
+  "id": "yoimiya",
+  "name": "Yoimiya",
+  "key": "Yoimiya",
+  "element": "pyro",
+  "weapon": "bow",
+  "rarity": 5,
+  "aliases": [
+   "yoi",
+   "yoimiya"
+  ]
+ },
+ {
+  "id": "sayu",
+  "name": "Sayu",
+  "key": "Sayu",
+  "element": "anemo",
+  "weapon": "claymore",
+  "rarity": 4,
+  "aliases": [
+   "sayu"
+  ]
+ },
+ {
+  "id": "raiden-shogun",
+  "name": "Raiden Shogun",
+  "key": "RaidenShogun",
+  "element": "electro",
+  "weapon": "polearm",
+  "rarity": 5,
+  "aliases": [
+   "ei",
+   "herexcellencythealmightynarukamiogoshogodofthunder",
+   "raiden",
+   "raidenshogun",
+   "shogun"
+  ]
+ },
+ {
+  "id": "kujou-sara",
+  "name": "Kujou Sara",
+  "key": "KujouSara",
+  "element": "electro",
+  "weapon": "bow",
+  "rarity": 4,
+  "aliases": [
+   "kujosara",
+   "kujousara",
+   "sara"
+  ]
+ },
+ {
+  "id": "aloy",
+  "name": "Aloy",
+  "key": "Aloy",
+  "element": "cryo",
+  "weapon": "bow",
+  "rarity": 5,
+  "aliases": [
+   "aloy"
+  ]
+ },
+ {
+  "id": "sangonomiya-kokomi",
+  "name": "Sangonomiya Kokomi",
+  "key": "SangonomiyaKokomi",
+  "element": "hydro",
+  "weapon": "catalyst",
+  "rarity": 5,
+  "aliases": [
+   "koko",
+   "kokomi",
+   "sangonomiyakokomi"
+  ]
+ },
+ {
+  "id": "thoma",
+  "name": "Thoma",
+  "key": "Thoma",
+  "element": "pyro",
+  "weapon": "polearm",
+  "rarity": 4,
+  "aliases": [
+   "thoma"
+  ]
+ },
+ {
+  "id": "gorou",
+  "name": "Gorou",
+  "key": "Gorou",
+  "element": "geo",
+  "weapon": "bow",
+  "rarity": 4,
+  "aliases": [
+   "gorou"
+  ]
+ },
+ {
+  "id": "arataki-itto",
+  "name": "Arataki Itto",
+  "key": "AratakiItto",
+  "element": "geo",
+  "weapon": "claymore",
+  "rarity": 5,
+  "aliases": [
+   "aratakiitto",
+   "aratakitheoneandoniitto",
+   "itto"
+  ]
+ },
+ {
+  "id": "shenhe",
+  "name": "Shenhe",
+  "key": "Shenhe",
+  "element": "cryo",
+  "weapon": "polearm",
+  "rarity": 5,
+  "aliases": [
+   "shenhe"
+  ]
+ },
+ {
+  "id": "yun-jin",
+  "name": "Yun Jin",
+  "key": "YunJin",
+  "element": "geo",
+  "weapon": "polearm",
+  "rarity": 4,
+  "aliases": [
+   "yunjin"
+  ]
+ },
+ {
+  "id": "yae-miko",
+  "name": "Yae Miko",
+  "key": "YaeMiko",
+  "element": "electro",
+  "weapon": "catalyst",
+  "rarity": 5,
+  "aliases": [
+   "yae",
+   "yaemiko"
+  ]
+ },
+ {
+  "id": "kamisato-ayato",
+  "name": "Kamisato Ayato",
+  "key": "KamisatoAyato",
+  "element": "hydro",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "ayato",
+   "kamisatoayato"
+  ]
+ },
+ {
+  "id": "yelan",
+  "name": "Yelan",
+  "key": "Yelan",
+  "element": "hydro",
+  "weapon": "bow",
+  "rarity": 5,
+  "aliases": [
+   "yelan",
+   "yl"
+  ]
+ },
+ {
+  "id": "kuki-shinobu",
+  "name": "Kuki Shinobu",
+  "key": "KukiShinobu",
+  "element": "electro",
+  "weapon": "sword",
+  "rarity": 4,
+  "aliases": [
+   "kuki",
+   "kukishinobu"
+  ]
+ },
+ {
+  "id": "shikanoin-heizou",
+  "name": "Shikanoin Heizou",
+  "key": "ShikanoinHeizou",
+  "element": "anemo",
+  "weapon": "catalyst",
+  "rarity": 4,
+  "aliases": [
+   "heizou",
+   "shikanoinheizou"
+  ]
+ },
+ {
+  "id": "traveler-dendro",
+  "name": "Traveler (Dendro)",
+  "key": "TravelerDendro",
+  "element": "dendro",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "aetherdendro",
+   "luminedendro",
+   "mcdendro",
+   "travelerdendro"
+  ]
+ },
+ {
+  "id": "collei",
+  "name": "Collei",
+  "key": "Collei",
+  "element": "dendro",
+  "weapon": "bow",
+  "rarity": 4,
+  "aliases": [
+   "collei"
+  ]
+ },
+ {
+  "id": "tighnari",
+  "name": "Tighnari",
+  "key": "Tighnari",
+  "element": "dendro",
+  "weapon": "bow",
+  "rarity": 5,
+  "aliases": [
+   "tighnari"
+  ]
+ },
+ {
+  "id": "dori",
+  "name": "Dori",
+  "key": "Dori",
+  "element": "electro",
+  "weapon": "claymore",
+  "rarity": 4,
+  "aliases": [
+   "dori"
+  ]
+ },
+ {
+  "id": "cyno",
+  "name": "Cyno",
+  "key": "Cyno",
+  "element": "electro",
+  "weapon": "polearm",
+  "rarity": 5,
+  "aliases": [
+   "cyno"
+  ]
+ },
+ {
+  "id": "candace",
+  "name": "Candace",
+  "key": "Candace",
+  "element": "hydro",
+  "weapon": "polearm",
+  "rarity": 4,
+  "aliases": [
+   "candace"
+  ]
+ },
+ {
+  "id": "nilou",
+  "name": "Nilou",
+  "key": "Nilou",
+  "element": "hydro",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "nilou"
+  ]
+ },
+ {
+  "id": "nahida",
+  "name": "Nahida",
+  "key": "Nahida",
+  "element": "dendro",
+  "weapon": "catalyst",
+  "rarity": 5,
+  "aliases": [
+   "kusanali",
+   "lesserlordkusanali",
+   "nah",
+   "nahida"
+  ]
+ },
+ {
+  "id": "layla",
+  "name": "Layla",
+  "key": "Layla",
+  "element": "cryo",
+  "weapon": "sword",
+  "rarity": 4,
+  "aliases": [
+   "layla"
+  ]
+ },
+ {
+  "id": "wanderer",
+  "name": "Wanderer",
+  "key": "Wanderer",
+  "element": "anemo",
+  "weapon": "catalyst",
+  "rarity": 5,
+  "aliases": [
+   "kabukimono",
+   "kuni",
+   "kunikuzushi",
+   "scara",
+   "scaramouche",
+   "wanderer"
+  ]
+ },
+ {
+  "id": "faruzan",
+  "name": "Faruzan",
+  "key": "Faruzan",
+  "element": "anemo",
+  "weapon": "bow",
+  "rarity": 4,
+  "aliases": [
+   "faru",
+   "faruzan"
+  ]
+ },
+ {
+  "id": "yaoyao",
+  "name": "Yaoyao",
+  "key": "Yaoyao",
+  "element": "dendro",
+  "weapon": "polearm",
+  "rarity": 4,
+  "aliases": [
+   "yaoyao"
+  ]
+ },
+ {
+  "id": "alhaitham",
+  "name": "Alhaitham",
+  "key": "Alhaitham",
+  "element": "dendro",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "alhaitham",
+   "haitham"
+  ]
+ },
+ {
+  "id": "dehya",
+  "name": "Dehya",
+  "key": "Dehya",
+  "element": "pyro",
+  "weapon": "claymore",
+  "rarity": 5,
+  "aliases": [
+   "dehya"
+  ]
+ },
+ {
+  "id": "mika",
+  "name": "Mika",
+  "key": "Mika",
+  "element": "cryo",
+  "weapon": "polearm",
+  "rarity": 4,
+  "aliases": [
+   "mika"
+  ]
+ },
+ {
+  "id": "kaveh",
+  "name": "Kaveh",
+  "key": "Kaveh",
+  "element": "dendro",
+  "weapon": "claymore",
+  "rarity": 4,
+  "aliases": [
+   "kaveh"
+  ]
+ },
+ {
+  "id": "baizhu",
+  "name": "Baizhu",
+  "key": "Baizhu",
+  "element": "dendro",
+  "weapon": "catalyst",
+  "rarity": 5,
+  "aliases": [
+   "baizhu"
+  ]
+ },
+ {
+  "id": "kirara",
+  "name": "Kirara",
+  "key": "Kirara",
+  "element": "dendro",
+  "weapon": "sword",
+  "rarity": 4,
+  "aliases": [
+   "kirara"
+  ]
+ },
+ {
+  "id": "traveler-hydro",
+  "name": "Traveler (Hydro)",
+  "key": "TravelerHydro",
+  "element": "hydro",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "aetherhydro",
+   "luminehydro",
+   "mchydro",
+   "travelerhydro"
+  ]
+ },
+ {
+  "id": "lynette",
+  "name": "Lynette",
+  "key": "Lynette",
+  "element": "anemo",
+  "weapon": "sword",
+  "rarity": 4,
+  "aliases": [
+   "lynette"
+  ]
+ },
+ {
+  "id": "lyney",
+  "name": "Lyney",
+  "key": "Lyney",
+  "element": "pyro",
+  "weapon": "bow",
+  "rarity": 5,
+  "aliases": [
+   "lyney"
+  ]
+ },
+ {
+  "id": "freminet",
+  "name": "Freminet",
+  "key": "Freminet",
+  "element": "cryo",
+  "weapon": "claymore",
+  "rarity": 4,
+  "aliases": [
+   "freminet"
+  ]
+ },
+ {
+  "id": "neuvillette",
+  "name": "Neuvillette",
+  "key": "Neuvillette",
+  "element": "hydro",
+  "weapon": "catalyst",
+  "rarity": 5,
+  "aliases": [
+   "chiefjusticeoffontaine",
+   "neuv",
+   "neuvi",
+   "neuvillette"
+  ]
+ },
+ {
+  "id": "wriothesley",
+  "name": "Wriothesley",
+  "key": "Wriothesley",
+  "element": "cryo",
+  "weapon": "catalyst",
+  "rarity": 5,
+  "aliases": [
+   "wrio",
+   "wriothesley"
+  ]
+ },
+ {
+  "id": "charlotte",
+  "name": "Charlotte",
+  "key": "Charlotte",
+  "element": "cryo",
+  "weapon": "catalyst",
+  "rarity": 4,
+  "aliases": [
+   "charlotte"
+  ]
+ },
+ {
+  "id": "furina",
+  "name": "Furina",
+  "key": "Furina",
+  "element": "hydro",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "fur",
+   "furina",
+   "furinadefontaine"
+  ]
+ },
+ {
+  "id": "navia",
+  "name": "Navia",
+  "key": "Navia",
+  "element": "geo",
+  "weapon": "claymore",
+  "rarity": 5,
+  "aliases": [
+   "demoiselle",
+   "navia"
+  ]
+ },
+ {
+  "id": "chevreuse",
+  "name": "Chevreuse",
+  "key": "Chevreuse",
+  "element": "pyro",
+  "weapon": "polearm",
+  "rarity": 4,
+  "aliases": [
+   "chev",
+   "chevreuse"
+  ]
+ },
+ {
+  "id": "gaming",
+  "name": "Gaming",
+  "key": "Gaming",
+  "element": "pyro",
+  "weapon": "claymore",
+  "rarity": 4,
+  "aliases": [
+   "gaming"
+  ]
+ },
+ {
+  "id": "xianyun",
+  "name": "Xianyun",
+  "key": "Xianyun",
+  "element": "anemo",
+  "weapon": "catalyst",
+  "rarity": 5,
+  "aliases": [
+   "cloudretainer",
+   "liuyun",
+   "xianyun"
+  ]
+ },
+ {
+  "id": "chiori",
+  "name": "Chiori",
+  "key": "Chiori",
+  "element": "geo",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "chiori"
+  ]
+ },
+ {
+  "id": "arlecchino",
+  "name": "Arlecchino",
+  "key": "Arlecchino",
+  "element": "pyro",
+  "weapon": "polearm",
+  "rarity": 5,
+  "aliases": [
+   "arle",
+   "arlecchino"
+  ]
+ },
+ {
+  "id": "sethos",
+  "name": "Sethos",
+  "key": "Sethos",
+  "element": "electro",
+  "weapon": "bow",
+  "rarity": 4,
+  "aliases": [
+   "sethos"
+  ]
+ },
+ {
+  "id": "clorinde",
+  "name": "Clorinde",
+  "key": "Clorinde",
+  "element": "electro",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "clorinde"
+  ]
+ },
+ {
+  "id": "sigewinne",
+  "name": "Sigewinne",
+  "key": "Sigewinne",
+  "element": "hydro",
+  "weapon": "bow",
+  "rarity": 5,
+  "aliases": [
+   "sigewinne"
+  ]
+ },
+ {
+  "id": "emilie",
+  "name": "Emilie",
+  "key": "Emilie",
+  "element": "dendro",
+  "weapon": "polearm",
+  "rarity": 5,
+  "aliases": [
+   "emilie"
+  ]
+ },
+ {
+  "id": "kachina",
+  "name": "Kachina",
+  "key": "Kachina",
+  "element": "geo",
+  "weapon": "polearm",
+  "rarity": 4,
+  "aliases": []
+ },
+ {
+  "id": "mualani",
+  "name": "Mualani",
+  "key": "Mualani",
+  "element": "hydro",
+  "weapon": "catalyst",
+  "rarity": 5,
+  "aliases": [
+   "mualani"
+  ]
+ },
+ {
+  "id": "kinich",
+  "name": "Kinich",
+  "key": "Kinich",
+  "element": "dendro",
+  "weapon": "claymore",
+  "rarity": 5,
+  "aliases": [
+   "kinich"
+  ]
+ },
+ {
+  "id": "xilonen",
+  "name": "Xilonen",
+  "key": "Xilonen",
+  "element": "geo",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "xilo",
+   "xilonen"
+  ]
+ },
+ {
+  "id": "chasca",
+  "name": "Chasca",
+  "key": "Chasca",
+  "element": "anemo",
+  "weapon": "bow",
+  "rarity": 5,
+  "aliases": [
+   "chasca"
+  ]
+ },
+ {
+  "id": "ororon",
+  "name": "Ororon",
+  "key": "Ororon",
+  "element": "electro",
+  "weapon": "bow",
+  "rarity": 4,
+  "aliases": [
+   "olorun",
+   "ororon"
+  ]
+ },
+ {
+  "id": "mavuika",
+  "name": "Mavuika",
+  "key": "Mavuika",
+  "element": "pyro",
+  "weapon": "claymore",
+  "rarity": 5,
+  "aliases": [
+   "mav",
+   "mavuika"
+  ]
+ },
+ {
+  "id": "citlali",
+  "name": "Citlali",
+  "key": "Citlali",
+  "element": "cryo",
+  "weapon": "catalyst",
+  "rarity": 5,
+  "aliases": [
+   "citlali"
+  ]
+ },
+ {
+  "id": "traveler-pyro",
+  "name": "Traveler (Pyro)",
+  "key": "TravelerPyro",
+  "element": "pyro",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "aetherpyro",
+   "luminepyro",
+   "mcpyro",
+   "travelerpyro"
+  ]
+ },
+ {
+  "id": "lan-yan",
+  "name": "Lan Yan",
+  "key": "LanYan",
+  "element": "anemo",
+  "weapon": "catalyst",
+  "rarity": 4,
+  "aliases": [
+   "lanyan"
+  ]
+ },
+ {
+  "id": "yumemizuki-mizuki",
+  "name": "Yumemizuki Mizuki",
+  "key": "YumemizukiMizuki",
+  "element": "anemo",
+  "weapon": "catalyst",
+  "rarity": 5,
+  "aliases": [
+   "mizuki",
+   "yumemizukimizuki"
+  ]
+ },
+ {
+  "id": "iansan",
+  "name": "Iansan",
+  "key": "Iansan",
+  "element": "electro",
+  "weapon": "polearm",
+  "rarity": 4,
+  "aliases": [
+   "iansan"
+  ]
+ },
+ {
+  "id": "varesa",
+  "name": "Varesa",
+  "key": "Varesa",
+  "element": "electro",
+  "weapon": "catalyst",
+  "rarity": 5,
+  "aliases": [
+   "varesa"
+  ]
+ },
+ {
+  "id": "escoffier",
+  "name": "Escoffier",
+  "key": "Escoffier",
+  "element": "cryo",
+  "weapon": "polearm",
+  "rarity": 5,
+  "aliases": [
+   "esco",
+   "escoffier"
+  ]
+ },
+ {
+  "id": "ifa",
+  "name": "Ifa",
+  "key": "Ifa",
+  "element": "anemo",
+  "weapon": "catalyst",
+  "rarity": 4,
+  "aliases": [
+   "ifa"
+  ]
+ },
+ {
+  "id": "skirk",
+  "name": "Skirk",
+  "key": "Skirk",
+  "element": "cryo",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "skirk"
+  ]
+ },
+ {
+  "id": "dahlia",
+  "name": "Dahlia",
+  "key": "Dahlia",
+  "element": "hydro",
+  "weapon": "sword",
+  "rarity": 4,
+  "aliases": [
+   "dahlia"
+  ]
+ },
+ {
+  "id": "ineffa",
+  "name": "Ineffa",
+  "key": "Ineffa",
+  "element": "electro",
+  "weapon": "polearm",
+  "rarity": 5,
+  "aliases": [
+   "ineffa"
+  ]
+ },
+ {
+  "id": "lauma",
+  "name": "Lauma",
+  "key": "Lauma",
+  "element": "dendro",
+  "weapon": "catalyst",
+  "rarity": 5,
+  "aliases": [
+   "lauma"
+  ]
+ },
+ {
+  "id": "aino",
+  "name": "Aino",
+  "key": "Aino",
+  "element": "hydro",
+  "weapon": "claymore",
+  "rarity": 4,
+  "aliases": [
+   "aino"
+  ]
+ },
+ {
+  "id": "flins",
+  "name": "Flins",
+  "key": "Flins",
+  "element": "electro",
+  "weapon": "polearm",
+  "rarity": 5,
+  "aliases": [
+   "flins"
+  ]
+ },
+ {
+  "id": "manekin",
+  "name": "Manekin",
+  "key": "Manekin",
+  "element": "none",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": []
+ },
+ {
+  "id": "manekina",
+  "name": "Manekina",
+  "key": "Manekina",
+  "element": "none",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": []
+ },
+ {
+  "id": "nefer",
+  "name": "Nefer",
+  "key": "Nefer",
+  "element": "dendro",
+  "weapon": "catalyst",
+  "rarity": 5,
+  "aliases": []
+ },
+ {
+  "id": "durin",
+  "name": "Durin",
+  "key": "Durin",
+  "element": "pyro",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "durin"
+  ]
+ },
+ {
+  "id": "jahoda",
+  "name": "Jahoda",
+  "key": "Jahoda",
+  "element": "anemo",
+  "weapon": "bow",
+  "rarity": 4,
+  "aliases": [
+   "jahoda"
+  ]
+ },
+ {
+  "id": "columbina",
+  "name": "Columbina",
+  "key": "Columbina",
+  "element": "hydro",
+  "weapon": "catalyst",
+  "rarity": 5,
+  "aliases": [
+   "bina",
+   "columbina"
+  ]
+ },
+ {
+  "id": "zibai",
+  "name": "Zibai",
+  "key": "Zibai",
+  "element": "geo",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "zibai"
+  ]
+ },
+ {
+  "id": "illuga",
+  "name": "Illuga",
+  "key": "Illuga",
+  "element": "geo",
+  "weapon": "polearm",
+  "rarity": 4,
+  "aliases": [
+   "illuga"
+  ]
+ },
+ {
+  "id": "varka",
+  "name": "Varka",
+  "key": "Varka",
+  "element": "anemo",
+  "weapon": "claymore",
+  "rarity": 5,
+  "aliases": [
+   "varka"
+  ]
+ },
+ {
+  "id": "linnea",
+  "name": "Linnea",
+  "key": "Linnea",
+  "element": "geo",
+  "weapon": "bow",
+  "rarity": 5,
+  "aliases": []
+ },
+ {
+  "id": "nicole",
+  "name": "Nicole",
+  "key": "Nicole",
+  "element": "pyro",
+  "weapon": "catalyst",
+  "rarity": 5,
+  "aliases": [
+   "nicole"
+  ]
+ },
+ {
+  "id": "prune",
+  "name": "Prune",
+  "key": "Prune",
+  "element": "anemo",
+  "weapon": "catalyst",
+  "rarity": 4,
+  "aliases": [
+   "prune"
+  ]
+ },
+ {
+  "id": "lohen",
+  "name": "Lohen",
+  "key": "Lohen",
+  "element": "cryo",
+  "weapon": "polearm",
+  "rarity": 5,
+  "aliases": []
+ },
+ {
+  "id": "sandrone",
+  "name": "Sandrone",
+  "key": "Sandrone",
+  "element": "cryo",
+  "weapon": "claymore",
+  "rarity": 5,
+  "aliases": [
+   "marionette",
+   "sandrone"
+  ]
+ },
+ {
+  "id": "alyosha",
+  "name": "Alyosha",
+  "key": "Alyosha",
+  "element": "electro",
+  "weapon": "polearm",
+  "rarity": 4,
+  "aliases": [
+   "alyosha"
+  ]
+ },
+ {
+  "id": "odette",
+  "name": "Odette",
+  "key": "Odette",
+  "element": "cryo",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "odette"
+  ]
+ },
+ {
+  "id": "traveler-cryo",
+  "name": "Traveler (Cryo)",
+  "key": "TravelerCryo",
+  "element": "cryo",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": [
+   "aethercryo",
+   "luminecryo",
+   "mccryo",
+   "travelercryo"
+  ]
+ },
+ {
+  "id": "vodyanitsa",
+  "name": "Vodyanitsa",
+  "key": "Vodyanitsa",
+  "element": "hydro",
+  "weapon": "catalyst",
+  "rarity": 5,
+  "aliases": []
+ },
+ {
+  "id": "vesna",
+  "name": "Vesna",
+  "key": "Vesna",
+  "element": "anemo",
+  "weapon": "sword",
+  "rarity": 5,
+  "aliases": []
+ },
+ {
+  "id": "mitya",
+  "name": "Mitya",
+  "key": "Mitya",
+  "element": "electro",
+  "weapon": "catalyst",
+  "rarity": 5,
+  "aliases": [
+   "mitia"
+  ]
+ },
+ {
+  "id": "valeriy",
+  "name": "Valeriy",
+  "key": "Valeriy",
+  "element": "electro",
+  "weapon": "sword",
+  "rarity": 4,
+  "aliases": [
+   "valerie",
+   "valery"
+  ]
+ },
+ {
+  "id": "danica",
+  "name": "Danica",
+  "key": "Danica",
+  "element": "electro",
+  "weapon": "claymore",
+  "rarity": 5,
+  "aliases": [
+   "danica"
+  ],
+  "upcoming": "7.3"
+ },
+ {
+  "id": "tsaritsa",
+  "name": "Tsaritsa",
+  "key": "Tsaritsa",
+  "element": "cryo",
+  "weapon": "bow",
+  "rarity": 5,
+  "aliases": [
+   "tsaritsa",
+   "tsar",
+   "anastasya",
+   "anastasia"
+  ],
+  "upcoming": "7.3"
+ }
+]

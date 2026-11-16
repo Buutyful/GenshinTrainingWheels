@@ -1,3 +1,4 @@
+import { norm, resolveCharacter, rosterById } from './roster';
 import type { AppData, Bindings, Character, Loadout, Settings } from './types';
 
 export const DEFAULT_BINDINGS: Bindings = {
@@ -46,19 +47,26 @@ export function emptyCharacters(): Character[] {
 }
 
 export function newLoadout(): Loadout {
-  return { id: newId(), name: 'New loadout', characters: emptyCharacters(), steps: [], loop: true, history: [] };
+  return { id: newId(), name: 'New loadout', characters: emptyCharacters(), steps: [], loopStart: 0, loop: true, rotationSec: null, history: [] };
+}
+
+/** Links a saved character to the roster when its name clearly is that character. */
+export function linkCharacter(c: Partial<Character> | undefined): Character {
+  const name = String(c?.name ?? '').slice(0, 40);
+  const r = rosterById(c?.id) ?? (name ? resolveCharacter(name) : undefined);
+  if (r && (c?.id === r.id || r.aliases.includes(norm(name)) || norm(r.name).startsWith(norm(name)) || r.name.toLowerCase().split(' ').map(norm).includes(norm(name)))) {
+    return { name: r.name, element: r.element, id: r.id };
+  }
+  return { name, element: c?.element ?? 'none' };
 }
 
 export function exampleLoadout(): Loadout {
   return {
     id: newId(),
     name: 'Raiden National (example)',
-    characters: [
-      { name: 'Raiden', element: 'electro' },
-      { name: 'Xingqiu', element: 'hydro' },
-      { name: 'Bennett', element: 'pyro' },
-      { name: 'Xiangling', element: 'pyro' },
-    ],
+    characters: ['raiden-shogun', 'xingqiu', 'bennett', 'xiangling'].map((id) => linkCharacter({ id })),
+    rotationSec: 21,
+    loopStart: 0,
     steps: [
       { slot: 0, action: 'skill' },
       { slot: 1, action: 'skill' },
@@ -109,7 +117,7 @@ export function migrate(raw: string | null): AppData | null {
       loadouts: (parsed.loadouts ?? []).map((l) => ({
         ...newLoadout(),
         ...l,
-        characters: [0, 1, 2, 3].map((i) => l.characters?.[i] ?? { name: '', element: 'none' as const }),
+        characters: [0, 1, 2, 3].map((i) => linkCharacter(l.characters?.[i])),
         history: l.history ?? [],
       })),
       settings: {

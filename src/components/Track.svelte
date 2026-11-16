@@ -1,7 +1,8 @@
 <script lang="ts">
   import type { FlatStep, StepStatus } from '../lib/engine';
-  import { charName, stepLabel } from '../lib/notation';
+  import { stepLabel } from '../lib/notation';
   import type { Character } from '../lib/types';
+  import Avatar from './Avatar.svelte';
 
   interface Props {
     steps: FlatStep[];
@@ -10,44 +11,44 @@
     pointer?: number;
     naClicks?: number;
     compact?: boolean;
-    /** Show only the block the pointer is in. */
-    currentOnly?: boolean;
   }
-  let { steps, characters, statuses, pointer = -1, naClicks = 0, compact = false, currentOnly = false }: Props = $props();
+  let { steps, characters, statuses, pointer = -1, naClicks = 0, compact = false }: Props = $props();
 
   const blocks = $derived.by(() => {
-    const out: { slot: number; swap: number; items: { step: FlatStep; index: number }[] }[] = [];
+    const out: { slot: number; swap: number; loopEntry: boolean; items: { step: FlatStep; index: number }[] }[] = [];
     steps.forEach((step, index) => {
       let b = out[step.block];
-      if (!b) b = out[step.block] = { slot: step.slot, swap: -1, items: [] };
+      if (!b) b = out[step.block] = { slot: step.slot, swap: -1, loopEntry: false, items: [] };
+      if (step.loopEntry) b.loopEntry = true;
       if (step.implicit) b.swap = index;
       else b.items.push({ step, index });
     });
     return out;
   });
   const currentBlock = $derived(pointer >= 0 ? steps[pointer]?.block : -1);
+  const hasOpener = $derived(blocks.some((b) => b.loopEntry));
 </script>
 
 <div class="track" class:compact>
+  {#if hasOpener}<span class="part-label">Opener</span>{/if}
   {#each blocks as b, bi (bi)}
-    {#if !currentOnly || bi === currentBlock}
-      <div
-        class="block el-{characters[b.slot]?.element ?? 'none'}"
-        class:active={bi === currentBlock}
-        class:swap-now={b.swap >= 0 && b.swap === pointer}
-        class:swap-missed={b.swap >= 0 && statuses?.[b.swap] === 'missed'}
-      >
-        <div class="who">
-          <span class="key">{b.slot + 1}</span>{charName(characters, b.slot as 0 | 1 | 2 | 3)}
-        </div>
-        <div class="chips">
-          {#each b.items as { step, index } (index)}
-            <span class="chip st-{statuses?.[index] ?? 'pending'}" class:current={index === pointer}>
-              {stepLabel(step.action, step.count)}{#if index === pointer && step.action === 'na' && step.count > 1}<small>{naClicks}/{step.count}</small>{/if}
-            </span>
-          {/each}
-        </div>
+    {#if b.loopEntry}<span class="part-label loop" title="Every lap after the first starts here">↻ Loop</span>{/if}
+    {@const done = statuses && b.items.every((it) => statuses[it.index] === 'skipped')}
+    <div
+      class="block el-{characters[b.slot]?.element ?? 'none'}"
+      class:active={bi === currentBlock}
+      class:swap-now={b.swap >= 0 && b.swap === pointer}
+      class:swap-missed={b.swap >= 0 && statuses?.[b.swap] === 'missed'}
+      class:past={done}
+    >
+      <Avatar character={characters[b.slot]} size={compact ? 26 : 34} slot={b.slot + 1} />
+      <div class="chips">
+        {#each b.items as { step, index } (index)}
+          <span class="chip st-{statuses?.[index] ?? 'pending'}" class:current={index === pointer}>
+            {stepLabel(step.action, step.count)}{#if index === pointer && step.action === 'na' && step.count > 1}<small>{naClicks}/{step.count}</small>{/if}
+          </span>
+        {/each}
       </div>
-    {/if}
+    </div>
   {/each}
 </div>

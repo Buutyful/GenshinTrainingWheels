@@ -15,8 +15,8 @@ export const DEFAULT_GAP: Record<ActionType, number> = {
 
 const CLICK_MS = 330;
 
-export function timingSig(steps: RotationStep[], loop: boolean): string {
-  return `${loop ? 'L' : 'O'}|${steps.map((s) => `${s.slot}${s.action}${s.count ?? ''}`).join(',')}`;
+export function timingSig(steps: RotationStep[], loop: boolean, loopStart = 0): string {
+  return `${loop ? 'L' : 'O'}${loopStart || ''}|${steps.map((s) => `${s.slot}${s.action}${s.count ?? ''}`).join(',')}`;
 }
 
 export function defaultTimings(steps: FlatStep[], sig: string): Timings {
@@ -45,12 +45,15 @@ const blend = (old: number, sample: number) => Math.round(old + 0.35 * (sample -
 export class TimingLearner {
   private last: { index: number; t: number } | null = null;
   private startT: number | null = null;
+  private loopStart: number;
   learned = false;
 
   constructor(
     private steps: FlatStep[],
     readonly timings: Timings,
-  ) {}
+  ) {
+    this.loopStart = Math.max(0, steps.findIndex((s) => s.loopEntry));
+  }
 
   onEvent(e: TrackerEvent): void {
     switch (e.kind) {
@@ -84,7 +87,8 @@ export class TimingLearner {
 
   private sampleGap(index: number, t: number): void {
     const last = this.last;
-    if (!last || index !== (last.index + 1) % this.steps.length) return;
+    const next = last && last.index + 1 < this.steps.length ? last.index + 1 : this.loopStart;
+    if (!last || index !== next) return;
     const v = t - last.t;
     if (v < 30 || v > 6000) return;
     this.timings.gap[last.index] = blend(this.timings.gap[last.index], v);

@@ -1,4 +1,5 @@
 import { defaultData, exampleLoadout, migrate, newId, newLoadout } from './defaults';
+import { exportJson, formatGcsim, formatNotation } from './formats';
 import { backupData, isElevated, loadData, saveData } from './platform';
 import type { AppData, Loadout, SessionSummary, Timings } from './types';
 
@@ -6,6 +7,7 @@ export type View =
   | { name: 'home' }
   | { name: 'edit'; id: string }
   | { name: 'session'; id: string }
+  | { name: 'metrics'; id: string }
   | { name: 'settings' };
 
 export const app = $state<{ loaded: boolean; data: AppData; view: View; elevated: boolean | null }>({
@@ -71,36 +73,21 @@ export function recordSession(id: string, summary: SessionSummary, timings: Timi
   l.history = [...l.history, summary].slice(-30);
 }
 
-/** Loadouts travel as JSON text so they can be pasted in chat or committed to a repo. */
-export function exportLoadout(id: string): string {
-  const l = findLoadout(id);
-  if (!l) return '';
-  const { name, characters, steps, loop } = $state.snapshot(l);
-  return JSON.stringify({ genshinTrainingWheels: 1, name, characters, steps, loop }, null, 2);
+export type ExportFormat = 'notation' | 'gcsim' | 'json';
+
+/** Loadouts travel as text so they can be pasted in chat, on a leaderboard or into gcsim. */
+export function exportLoadout(id: string, format: ExportFormat): string {
+  const found = findLoadout(id);
+  if (!found) return '';
+  const l = $state.snapshot(found) as Loadout;
+  const ls = l.loop ? (l.loopStart ?? 0) : 0;
+  if (format === 'gcsim') return formatGcsim(l.steps, l.characters, ls, l.loop);
+  if (format === 'json') return exportJson(l);
+  return formatNotation(l.steps, l.characters, ls, l.rotationSec);
 }
 
-export function importLoadout(text: string): string | null {
-  try {
-    const p = JSON.parse(text);
-    if (!p || !Array.isArray(p.steps) || !Array.isArray(p.characters)) return 'This is not a Genshin Training Wheels loadout.';
-    const base = newLoadout();
-    const okActions = new Set(['skill', 'skillHold', 'burst', 'na', 'ca', 'dash', 'jump']);
-    const steps = p.steps.filter(
-      (s: { slot?: unknown; action?: unknown }) =>
-        typeof s.slot === 'number' && s.slot >= 0 && s.slot <= 3 && okActions.has(String(s.action)),
-    );
-    app.data.loadouts.push({
-      ...base,
-      name: String(p.name ?? 'Imported loadout').slice(0, 80),
-      characters: base.characters.map((c, i) => ({
-        name: String(p.characters[i]?.name ?? '').slice(0, 40),
-        element: p.characters[i]?.element ?? c.element,
-      })),
-      steps,
-      loop: p.loop !== false,
-    });
-    return null;
-  } catch {
-    return 'Could not read that text as JSON.';
-  }
+/** Adds the loadout an import preview produced and returns its id. */
+export function addImported(l: Loadout): string {
+  app.data.loadouts.push(l);
+  return l.id;
 }

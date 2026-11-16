@@ -11,17 +11,29 @@ export interface FlatStep {
   src: number;
   /** Consecutive steps on the same character share a block. */
   block: number;
+  /** First step of the looping part when the rotation has an opener. */
+  loopEntry?: boolean;
 }
 
-/** Expands a rotation into the exact sequence of inputs the tracker expects, swaps included. */
-export function flatten(steps: RotationStep[], loop: boolean): FlatStep[] {
+/**
+ * Expands a rotation into the exact sequence of inputs the tracker expects, swaps included.
+ *
+ * With an opener (`loopStart` > 0) the first `loopStart` steps are played once and the rest
+ * loops. The looping part always starts with a swap to its first character; the tracker
+ * passes over it when the player is already on that character.
+ */
+export function flatten(steps: RotationStep[], loop: boolean, loopStart = 0): FlatStep[] {
   const out: FlatStep[] = [];
   if (!steps.length) return out;
-  let prev: Slot = loop ? steps[steps.length - 1].slot : steps[0].slot;
+  const opener = loop && loopStart > 0 && loopStart < steps.length;
+  let prev: Slot = loop && !opener ? steps[steps.length - 1].slot : steps[0].slot;
   let block = -1;
   steps.forEach((s, i) => {
-    if (i === 0 || s.slot !== steps[i - 1].slot) block++;
-    if (s.slot !== prev) out.push({ slot: s.slot, action: 'swap', count: 1, implicit: true, src: -1, block });
+    const entry = opener && i === loopStart;
+    if (i === 0 || s.slot !== steps[i - 1].slot || entry) block++;
+    if (s.slot !== prev || entry) {
+      out.push({ slot: s.slot, action: 'swap', count: 1, implicit: true, src: -1, block, ...(entry ? { loopEntry: true } : {}) });
+    }
     out.push({
       slot: s.slot,
       action: s.action,
@@ -104,6 +116,10 @@ export class Tracker {
   private recovering = false;
   private readonly entries: number[];
   private readonly firstReal: number;
+  /** Where each lap after the first starts; 0 unless the rotation has an opener. */
+  readonly loopStart: number;
+  /** Whether the current lap began straight after the first rotation. */
+  private fromOpener = false;
 
   constructor(
     readonly steps: FlatStep[],
@@ -114,6 +130,7 @@ export class Tracker {
     this.statuses = steps.map(() => 'pending');
     this.stats = steps.map(() => ({ hits: 0, missed: 0, wrongAt: 0 }));
     this.firstReal = steps[0]?.implicit ? 1 : 0;
+    this.loopStart = Math.max(0, steps.findIndex((s) => s.loopEntry));
     this.entries = [];
     steps.forEach((s, i) => {
       if (i === 0 || steps[i - 1].block !== s.block) {
@@ -229,12 +246,31 @@ export class Tracker {
     this.lastHit = a;
     this.listener({ kind: 'hit', index: i, t: a.t });
     this.advance(a.t);
+    // The swap into the looping part is moot when the opener already ends on that character.
+    const next = this.steps[this.pointer];
+    if (this.status !== 'done' && next?.implicit && next.slot === cur.slot && this.pointer !== i) {
+      this.statuses[this.pointer] = 'ok';
+      this.advance(a.t);
+    }
   }
 
   private advance(t: number): void {
     this.pointer++;
     this.naClicks = 0;
-    if (this.pointer >= this.steps.length) this.finishLap(t);
+    if (this.pointer >= this.steps.length) {
+      this.fromOpener = false;
+      this.finishLap(t);
+    } else if (this.loopStart > 0 && this.pointer === this.loopStart) {
+      // The first rotation is a lap of its own, like "1st rotation" on a leaderboard.
+      this.fromOpener = true;
+      this.finishLap(t);
+    }
+  }
+
+  /** The step played before `p`; at the start of the loop that depends on where we came from. */
+  prevIndex(p: number): number {
+    if (p === this.loopStart && this.loopStart > 0) return this.fromOpener ? p - 1 : this.steps.length - 1;
+    return p > 0 ? p - 1 : this.steps.length - 1;
   }
 
   private finishLap(t: number): void {
@@ -249,8 +285,9 @@ export class Tracker {
     this.lap++;
     this.listener({ kind: 'lap', lap: this.lap, durationMs: record.durationMs, clean: record.clean, t });
     if (this.loop) {
-      this.pointer = 0;
+      this.pointer = this.loopStart;
       this.statuses.fill('pending');
+      for (let i = 0; i < this.loopStart; i++) this.statuses[i] = 'skipped';
       this.lapStartT = t;
       this.lapErrors = 0;
     } else {
@@ -266,12 +303,14 @@ export class Tracker {
    */
   private findAhead(a: GameAction): number {
     const n = this.steps.length;
+    const cycle = n - this.loopStart;
+    const limit = this.loop && this.pointer >= this.loopStart ? cycle : n;
     let skippedMajor = 0;
-    for (let k = 0; k < n; k++) {
+    for (let k = 0; k < limit; k++) {
       let idx = this.pointer + k;
       if (idx >= n) {
         if (!this.loop) break;
-        idx -= n;
+        idx = this.loopStart + ((idx - n) % cycle);
       }
       const s = this.steps[idx];
       if (k > 0 && this.matches(s, a)) return idx;
@@ -360,8 +399,8 @@ export class Tracker {
       if (!this.matches(this.steps[i], a)) return;
       let d = i - this.pointer;
       if (d < 0) {
-        if (!this.loop) return;
-        d += n;
+        if (!this.loop || i < this.loopStart) return;
+        d += n - this.loopStart;
       }
       if (d < bestDist) {
         bestDist = d;

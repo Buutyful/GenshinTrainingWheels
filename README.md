@@ -24,16 +24,32 @@ open and **not code-signed**, so Windows does not know the publisher:
    buttons or by typing it:
 
    ```
-   Raiden: E > Xingqiu: E Q > Bennett: Q E > Xiangling: Q E > Raiden: Q N3 CA N3 CA
+   Raiden E > Xingqiu EQ > Bennett QE > Xiangling QE > Raiden Q N3C N3C
+   Rotation time: 21 s
    ```
 
-   Characters by name or slot number (`1`–`4`). Actions: `E`, `hE` (hold), `Q`, `N1`–`N9`,
-   `CA`, `N2C`, `Dash`, `Jump`. Swaps are implied.
+   This is the notation leaderboards such as Hexenzirkel and KQM guides use. Characters by
+   name, nickname or slot number (`1`–`4`), picked from a searchable roster with portraits.
+   Actions: `E`, `hE` (hold), `Q`, `N1`–`N9`, `C` / `CA`, `D` (dash), `J` (jump), `P`
+   (plunge); `2x[…]` repeats. Swaps are implied. Lines starting with `1st rotation:` and
+   `2nd onwards:` give a first rotation that differs from the rest.
 
-2. **Press Start**, switch to the game, and play. The tutor knows who is on field from your swap
+   **Import** also reads gcsim configs (team from the `char` lines, the loop body from the
+   first `while`/`for`) and Genshin Optimizer target configs (what Hexenzirkel's
+   "Export rotation" downloads). **Export** writes the rotation text, a gcsim action list or a
+   full loadout.
+
+2. **Set the rotation time** — how long one lap should take. Runs show a pace bar against it.
+
+3. **Press Start**, switch to the game, and play. The tutor knows who is on field from your swap
    keys, reads Alt+number as "swap and burst", tells a tap from a hold, and counts attacks.
 
-3. **Stop** (F10 by default) to see accuracy, lap times and the steps you miss most.
+4. **Stop** (F10 by default) to see the run's metrics: laps against the rotation time, field
+   time and every input per character, accuracy per character and the steps you miss most.
+   **Metrics** on a loadout shows the same for every past run, plus trends over runs.
+
+The character roster and portraits ship with the app (regenerate them with
+`node scripts/update-roster.mjs`); nothing is downloaded at run time.
 
 ### What counts as a mistake
 

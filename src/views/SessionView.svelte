@@ -1,13 +1,15 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
+  import Avatar from '../components/Avatar.svelte';
+  import RunReport from '../components/RunReport.svelte';
   import Track from '../components/Track.svelte';
   import { app, findLoadout, go, recordSession } from '../lib/app.svelte';
-  import { clock, pct, secs } from '../lib/format';
+  import { clock, pct } from '../lib/format';
   import { prettyCode } from '../lib/keycodes';
   import { charName, stepLabel } from '../lib/notation';
   import { isTauri, setCompact } from '../lib/platform';
   import { Session, type Report } from '../lib/session.svelte';
-  import type { Guidance } from '../lib/types';
+  import type { Guidance, SessionSummary } from '../lib/types';
 
   let { id }: { id: string } = $props();
 
@@ -18,6 +20,7 @@
 
   let session = $state.raw<Session | null>(null);
   let report = $state.raw<Report | null>(null);
+  let lastRun = $state.raw<SessionSummary | null>(null);
   let compact = $state(false);
   let guidance = $state<Guidance>(app.data.settings.audio.guidance);
 
@@ -35,6 +38,7 @@
     session = null;
     if (r.summary.durationMs > 0) recordSession(id, r.summary, r.timings);
     report = r;
+    lastRun = r.summary;
     applyCompact(false);
   }
 
@@ -61,22 +65,14 @@
     applyCompact(false);
   });
 
-  const troubled = $derived(
-    report
-      ? report.steps
-          .map((step, i) => ({ step, ...report!.stats[i] }))
-          .filter((r) => r.missed + r.wrongAt > 0)
-          .sort((a, b) => b.missed + b.wrongAt - (a.missed + a.wrongAt))
-          .slice(0, 8)
-      : [],
-  );
 </script>
 
 {#if session && loadout}
   {@const s = session.snap}
   {@const cur = session.steps[s.pointer]}
-  {@const nextIndex = s.pointer + 1 < session.steps.length ? s.pointer + 1 : loadout.loop ? 0 : -1}
+  {@const nextIndex = s.pointer + 1 < session.steps.length ? s.pointer + 1 : loadout.loop ? Math.max(0, session.steps.findIndex((f) => f.loopEntry)) : -1}
   {@const next = nextIndex >= 0 ? session.steps[nextIndex] : null}
+  {@const focus = s.status === 'offtrack' ? s.activeSlot : cur.slot}
 
   <header class="bar" data-tauri-drag-region>
     <button class="danger" onclick={finish}>Stop</button>
@@ -103,7 +99,9 @@
   <main class="page live">
     {#if session.error}<div class="notice warn">{session.error}</div>{/if}
 
-    <section class="now el-{loadout.characters[cur.slot].element} s-{s.status}">
+    <section class="now el-{loadout.characters[focus].element} s-{s.status}">
+      <Avatar character={loadout.characters[focus]} size={compact ? 44 : 84} dim={s.status === 'offtrack'} />
+      <div class="now-text">
       {#if s.status === 'offtrack'}
         <div class="now-label">{s.offReason === 'idle' ? 'Paused' : 'Off track'}</div>
         <div class="now-main">
@@ -117,7 +115,7 @@
         <div class="now-label">{s.status === 'armed' ? 'Start with' : 'Now'}</div>
         <div class="now-main">
           {#if cur.action === 'swap'}
-            <span class="arrow">â†’</span>
+            <span class="arrow">→</span>
             <span class="who-big">{charName(loadout.characters, cur.slot)}</span>
             <kbd>{prettyCode(keys[`swap${(cur.slot + 1) as 1 | 2 | 3 | 4}`][0] ?? '')}</kbd>
           {:else}
@@ -134,7 +132,17 @@
           {/if}
         </div>
       {/if}
+      </div>
     </section>
+
+    {#if session.targetMs && s.status === 'tracking'}
+      {@const over = s.lapMs > session.targetMs}
+      <div class="pace" class:over>
+        <span>Lap <b>{s.lap + 1}</b></span>
+        <div class="bar-track"><div class="bar-fill" style:width="{Math.min(100, (s.lapMs / session.targetMs) * 100)}%"></div></div>
+        <span><b>{(s.lapMs / 1000).toFixed(1)}</b> / {session.targetMs / 1000}s{#if over}{' · '}over{/if}</span>
+      </div>
+    {/if}
 
     <div class="hide-compact">
       <Track steps={session.steps} characters={loadout.characters} statuses={s.statuses} pointer={s.pointer} naClicks={s.naClicks} />
@@ -155,62 +163,19 @@
   {@const sum = report.summary}
   <header class="bar">
     <button onclick={() => go({ name: 'home' })}>Back</button>
-    <h1>{loadout.name} â€” results</h1>
+    <h1>{loadout.name} — results</h1>
     <div class="spacer"></div>
     <button class="primary" onclick={begin}>Run again</button>
   </header>
 
   <main class="page narrow">
-    {#if sum.durationMs === 0}
+    {#if sum.durationMs === 0 || !lastRun}
       <div class="empty"><h2>Nothing recorded</h2><p>The run was stopped before the first step.</p></div>
     {:else}
-      <div class="tiles">
-        <div class="tile"><b>{pct(sum.accuracy)}</b><span>accuracy</span></div>
-        <div class="tile"><b>{sum.cleanLaps}/{sum.laps}</b><span>clean laps</span></div>
-        <div class="tile"><b>{secs(sum.bestLapMs)}</b><span>best clean lap</span></div>
-        <div class="tile"><b>{secs(sum.avgLapMs)}</b><span>average lap</span></div>
-        <div class="tile"><b>{clock(sum.durationMs)}</b><span>time tracked</span></div>
+      <RunReport {loadout} run={lastRun} />
+      <div class="row center">
+        <button onclick={() => go({ name: 'metrics', id })}>All metrics for this loadout</button>
       </div>
-
-      <section class="panel">
-        <h2>Where it went wrong</h2>
-        {#if troubled.length}
-          <table>
-            <thead><tr><th>Step</th><th class="num">Skipped</th><th class="num">Wrong input here</th></tr></thead>
-            <tbody>
-              {#each troubled as r (r.step)}
-                <tr>
-                  <td>
-                    {r.step.action === 'swap' ? 'Swap to' : stepLabel(r.step.action, r.step.count) + ' on'}
-                    {charName(loadout.characters, r.step.slot)}
-                  </td>
-                  <td class="num">{r.missed || ''}</td>
-                  <td class="num">{r.wrongAt || ''}</td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        {:else}
-          <p class="muted">No skipped or wrong skills, bursts or swaps.</p>
-        {/if}
-        <p class="muted small">
-          {report.totals.hits} steps hit Â· {report.totals.missed} skipped Â· {report.totals.wrong} wrong inputs. Attacks, dashes
-          and jumps are never counted as errors.
-        </p>
-      </section>
-
-      {#if report.laps.length}
-        <section class="panel">
-          <h2>Laps</h2>
-          <div class="laps">
-            {#each report.laps as lap, i (i)}
-              <span class="lap" class:clean={lap.clean} class:aborted={lap.aborted}>
-                {lap.aborted ? 'abandoned' : secs(lap.durationMs)}{#if !lap.aborted && lap.errors}<small>{lap.errors} err</small>{/if}
-              </span>
-            {/each}
-          </div>
-        </section>
-      {/if}
     {/if}
   </main>
 {/if}
