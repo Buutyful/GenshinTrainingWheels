@@ -1,0 +1,41 @@
+name: CI
+
+# Builds the app on every push so the Rust shell is compiled on a clean Windows machine.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - run: npm test
+      - run: npm run check
+      - run: npm run build
+      # Fails fast on compile errors before the slow optimised build.
+      - run: cargo check --locked
+        working-directory: src-tauri
+      - run: npm run tauri build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rotation-tutor-windows
+          path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/rotation-tutor.exe
+          if-no-files-found: error
