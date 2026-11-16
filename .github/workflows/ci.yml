@@ -34,8 +34,8 @@ jobs:
       - run: npm run tauri build
       - uses: actions/upload-artifact@v4
         with:
-          name: rotation-tutor-windows
+          name: genshin-training-wheels-windows
           path: |
             src-tauri/target/release/bundle/nsis/*.exe
-            src-tauri/target/release/rotation-tutor.exe
+            src-tauri/target/release/genshin-training-wheels.exe
           if-no-files-found: error

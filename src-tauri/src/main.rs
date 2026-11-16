@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    rotation_tutor_lib::run()
+    genshin_training_wheels_lib::run()
 }

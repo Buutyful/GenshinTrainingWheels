@@ -81,5 +81,5 @@ pub fn run() {
             relaunch_as_admin
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Rotation Tutor");
+        .expect("error while running Genshin Training Wheels");
 }

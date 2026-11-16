@@ -76,13 +76,13 @@ export function exportLoadout(id: string): string {
   const l = findLoadout(id);
   if (!l) return '';
   const { name, characters, steps, loop } = $state.snapshot(l);
-  return JSON.stringify({ rotationTutor: 1, name, characters, steps, loop }, null, 2);
+  return JSON.stringify({ genshinTrainingWheels: 1, name, characters, steps, loop }, null, 2);
 }
 
 export function importLoadout(text: string): string | null {
   try {
     const p = JSON.parse(text);
-    if (!p || !Array.isArray(p.steps) || !Array.isArray(p.characters)) return 'This is not a Rotation Tutor loadout.';
+    if (!p || !Array.isArray(p.steps) || !Array.isArray(p.characters)) return 'This is not a Genshin Training Wheels loadout.';
     const base = newLoadout();
     const okActions = new Set(['skill', 'skillHold', 'burst', 'na', 'ca', 'dash', 'jump']);
     const steps = p.steps.filter(

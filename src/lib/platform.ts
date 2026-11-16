@@ -4,7 +4,7 @@ import type { RawEvent } from './types';
 /** True inside the desktop app; false when the UI runs in a plain browser (practice mode). */
 export const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
-const STORAGE_KEY = 'rotation-tutor-data';
+const STORAGE_KEY = 'genshin-training-wheels-data';
 
 export const nowMs = () => performance.timeOrigin + performance.now();
 

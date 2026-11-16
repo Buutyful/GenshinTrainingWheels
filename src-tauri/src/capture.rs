@@ -94,7 +94,7 @@ fn emit(payload: RawPayload) {
 }
 
 unsafe fn message_loop() {
-    let class: Vec<u16> = "RotationTutorInput\0".encode_utf16().collect();
+    let class: Vec<u16> = "GenshinTrainingWheelsInput\0".encode_utf16().collect();
     let instance = GetModuleHandleW(null());
 
     let mut wc: WNDCLASSW = zeroed();

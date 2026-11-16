@@ -25,7 +25,7 @@
 </script>
 
 <header class="bar">
-  <h1>Rotation Tutor</h1>
+  <h1>Genshin Training Wheels</h1>
   <div class="spacer"></div>
   <button onclick={() => (dialog = { mode: 'import', text: '', error: null })}>Import</button>
   <button onclick={() => go({ name: 'settings' })}>Settings</button>
@@ -112,7 +112,7 @@
         </div>
       {:else}
         <h2>Import loadout</h2>
-        <p class="muted">Paste a loadout exported from Rotation Tutor.</p>
+        <p class="muted">Paste a loadout exported from Genshin Training Wheels.</p>
         <textarea rows="12" bind:value={dialog.text} placeholder="Paste the exported text here"></textarea>
         {#if dialog.error}<p class="error">{dialog.error}</p>{/if}
         <div class="row end">

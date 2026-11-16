@@ -1,11 +1,22 @@
-# Rotation Tutor
+# Genshin Training Wheels
 
-A small Windows app for drilling Genshin Impact team rotations. You describe your team and its
-rotation once; then the tutor listens to your keys while you play, follows where you are in the
-rotation, and cues the next move through your headphones — early enough to react to.
+Training wheels for Genshin Impact team rotations. You describe your team and its rotation
+once; then the app listens to your keys while you play, follows where you are in the rotation,
+and cues the next move through your headphones — early enough to react to. Once the rotation
+is in your hands, turn the cues down and ride without them.
 
 It only reads your keyboard and mouse. It does not read the game's memory or screen, inject
 anything, or send any input.
+
+## Install
+
+Download the installer from the [Releases](../../releases) page and run it. The app is free,
+open and **not code-signed**, so Windows does not know the publisher:
+
+- **SmartScreen** shows "Windows protected your PC". Choose *More info → Run anyway*.
+- **Smart App Control** (Windows 11, only if it is switched on) blocks unsigned apps outright
+  and offers no "run anyway". The app cannot start while it is on; you can check it under
+  Windows Security → App & browser control → Smart App Control.
 
 ## How it works
 
@@ -64,8 +75,8 @@ Every sound can be auditioned under Settings → Sound guide.
   "Restart as administrator" button for in-game tracking.
 - **Antivirus and SmartScreen.** The app uses Windows Raw Input (a read-only copy of input
   events) rather than a keyboard hook, registers for input only while a run is active, makes no
-  network connections and never writes keystrokes to disk. Builds are unsigned, so SmartScreen
-  will warn on first launch; build from source if you prefer.
+  network connections and never writes keystrokes to disk. Build from source if you would
+  rather not trust a download.
 - **Game terms.** This is an unofficial third-party tool. It does not interact with the game
   client, but HoYoverse's terms do not approve third-party tools in general; use it at your own
   discretion.
@@ -74,7 +85,9 @@ Every sound can be auditioned under Settings → Sound guide.
 
 ## Development
 
-Requires Node.js, Rust and the Microsoft C++ Build Tools.
+Requires Node.js, Rust and the Microsoft C++ Build Tools. Smart App Control also blocks the
+helper programs Rust generates while compiling, so the desktop app only builds locally with it
+switched off; the browser UI and the tests are not affected.
 
 ```bash
 npm install
