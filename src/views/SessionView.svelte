@@ -11,6 +11,7 @@
   import { isTauri, setCompact } from '../lib/platform';
   import { Session, type Report, type SessionMode } from '../lib/session.svelte';
   import { STYLE_IDS, STYLES } from '../lib/music/band';
+  import { GRADE_LABEL, GRADES } from '../lib/rhythm';
   import type { Guidance, MusicStyle, SessionSummary } from '../lib/types';
 
   let { id, mode = 'practice' }: { id: string; mode?: SessionMode } = $props();
@@ -183,6 +184,22 @@
           <span class="muted">{s.status === 'armed' ? 'The track starts on your first step.' : 'Beat only. The track comes back when you are on a step again.'}</span>
         {/if}
       </div>
+      {#if session.judged && session.hasTrack}
+        {@const j = session.judged}
+        <div class="judge-row">
+          {#key j.last?.id}
+            <span class="grade g-{j.last?.grade ?? 'none'}">
+              {j.last ? GRADE_LABEL[j.last.grade] : '—'}
+              {#if j.last?.deltaMs != null}<small>{j.last.deltaMs > 0 ? '+' : '−'}{Math.abs(Math.round(j.last.deltaMs))} ms</small>{/if}
+            </span>
+          {/key}
+          {#if j.streak >= 3}<span class="streak">{j.streak} in a row</span>{/if}
+          <div class="spacer"></div>
+          <span class="counts hide-compact">
+            {#each GRADES as g (g)}<span class="g-{g}" title={GRADE_LABEL[g]}><b>{j.counts[g]}</b> {GRADE_LABEL[g].toLowerCase()}</span>{/each}
+          </span>
+        </div>
+      {/if}
     {/if}
 
     {#if session.targetMs && s.status === 'tracking'}

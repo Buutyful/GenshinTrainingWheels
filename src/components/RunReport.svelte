@@ -2,6 +2,7 @@
   import { flatten } from '../lib/engine';
   import { clock, pct, secs } from '../lib/format';
   import { charName, stepLabel } from '../lib/notation';
+  import { GRADE_LABEL, GRADES, onBeat } from '../lib/rhythm';
   import { timingSig } from '../lib/timing';
   import type { Loadout, SessionSummary, StepAction } from '../lib/types';
   import Avatar from './Avatar.svelte';
@@ -29,6 +30,20 @@
   const avgLap = $derived(m && m.laps.length ? m.laps.reduce((s, l) => s + l.ms, 0) / m.laps.length : null);
   const vsTarget = $derived(m?.targetMs && avgLap !== null ? avgLap - m.targetMs : null);
   const onTarget = $derived(m?.targetMs ? m.laps.filter((l) => l.ms <= m.targetMs! * 1.05).length : 0);
+
+  const rh = $derived(m?.rhythm ?? null);
+  const judgedTotal = $derived(rh ? GRADES.reduce((s, g) => s + rh.counts[g], 0) : 0);
+  /** Steps that were missed, or sat well off the beat on average. */
+  const offBeat = $derived(
+    rh && rh.steps.sig === m!.steps.sig && sameRotation
+      ? steps
+          .map((step, i) => ({ step, i, n: rh.steps.n[i] ?? 0, mean: rh.steps.meanMs[i] ?? 0, misses: rh.steps.misses[i] ?? 0 }))
+          .filter((r) => r.misses > 0 || (r.n >= 2 && Math.abs(r.mean) >= 40))
+          .sort((a, b) => b.misses - a.misses || Math.abs(b.mean) - Math.abs(a.mean))
+          .slice(0, 6)
+      : [],
+  );
+  const ms = (x: number) => `${Math.abs(Math.round(x))} ms ${x < 0 ? 'early' : 'late'}`;
 
   const troubled = $derived(
     m && sameRotation
@@ -61,6 +76,49 @@
 {#if !m}
   <p class="muted small">This run was recorded before detailed metrics existed; only the totals above were kept.</p>
 {:else}
+  {#if rh && judgedTotal}
+    <section class="panel">
+      <h2>Rhythm</h2>
+      <div class="dist" role="img" aria-label="Judgements">
+        {#each GRADES as g (g)}
+          {#if rh.counts[g]}<div class="g-{g}" style:flex-grow={rh.counts[g]} title="{GRADE_LABEL[g]}: {rh.counts[g]}"></div>{/if}
+        {/each}
+      </div>
+      <div class="legend">
+        {#each GRADES as g (g)}<span class="g-{g}"><i></i><b>{rh.counts[g]}</b> {GRADE_LABEL[g].toLowerCase()}</span>{/each}
+      </div>
+      <p>
+        <b>{pct(onBeat(rh.counts))}</b> on the beat{#if rh.meanMs !== null}{' · '}on average {Math.abs(rh.meanMs) < 5 ? 'right on it' : ms(rh.meanMs)}{/if}{#if rh.spreadMs !== null}{' · '}spread ±{Math.round(rh.spreadMs)} ms{/if}{' · '}best streak {rh.bestStreak}
+      </p>
+      {#if rh.meanMs !== null && Math.abs(rh.meanMs) >= 30}
+        <p class="muted small">
+          You played {ms(rh.meanMs)} on average. If it felt on time, your latency setting ({rh.latencyMs} ms) may be off: calibrate it in
+          Settings.
+        </p>
+      {/if}
+      {#if offBeat.length}
+        <table>
+          <thead><tr><th>Step</th><th class="num">Average</th><th class="num">Missed</th></tr></thead>
+          <tbody>
+            {#each offBeat as r (r.i)}
+              <tr>
+                <td>
+                  <span class="step-cell">
+                    <Avatar character={loadout.characters[r.step.slot]} size={22} />
+                    {r.step.action === 'swap' ? 'Swap to' : stepLabel(r.step.action, r.step.count) + ' on'}
+                    {charName(loadout.characters, r.step.slot)}
+                  </span>
+                </td>
+                <td class="num">{r.n ? ms(r.mean) : ''}</td>
+                <td class="num">{r.misses || ''}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      {/if}
+    </section>
+  {/if}
+
   {#if m.laps.length}
     <section class="panel">
       <h2>Laps</h2>
@@ -213,6 +271,36 @@
   .judged b {
     font-size: 18px;
     font-variant-numeric: tabular-nums;
+  }
+  .dist {
+    display: flex;
+    gap: 2px;
+    height: 12px;
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .dist div {
+    background: var(--g);
+    min-width: 3px;
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    font-size: 13px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .legend i {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    background: var(--g);
+    margin-right: 6px;
+  }
+  .legend b {
+    color: var(--text);
   }
   .step-cell {
     display: inline-flex;

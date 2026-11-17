@@ -1,6 +1,9 @@
 import type { CueOutput, Sfx } from './cues';
 import type { FlatStep } from './engine';
 import { cueGain, getMix, onMix } from './mix';
+import { triggersFor } from './music/arrange';
+import { wordFor } from './music/cuelayer';
+import { say } from './music/voice';
 import { nowMs } from './platform';
 import type { AudioSettings } from './types';
 
@@ -127,7 +130,10 @@ export class AudioOut implements CueOutput {
   cue(step: FlatStep, at: number, due: number | null): void {
     if (!this.ctx) return;
     const t = this.when(at);
-    this.motif(step, t);
+    const word = this.cfg.cueSound === 'voice' ? wordFor(triggersFor(step)[0]) : null;
+    // The voice says the key instead of the arcade motif; the build-up still leads to the press.
+    if (word) say(this.ctx, this.master!, word, t, 0.5);
+    else this.motif(step, t);
     if (due !== null) this.riser(t + 0.1, this.when(due));
   }
 

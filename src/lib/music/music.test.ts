@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { encodeWav, fft, gridOffsets, levels, onsets, spectrogram } from './analysis';
 import { DEMO } from './arrange';
-import { grooveFor, grooves, hitsAt, PHRASE_BARS, PIECES, STYLE_IDS, STYLES } from './band';
-import { CUE_GUIDE, SLOT_NOTES } from './cuelayer';
+import { grooveFor, grooves, hitsAt, PHRASE_BARS, PIECES, RUNWAY_BASS, RUNWAY_CYCLE, runwaySection, STYLE_IDS, STYLES } from './band';
+import { CUE_GUIDE, SLOT_NOTES, wordFor, type Trigger } from './cuelayer';
+import { anchorOf, lengthOf, WORDS, type VoiceWord } from './voice';
 import { acidPhrase, barSec, midiToHz, noteToMidi, notes, stepSec, steps } from './patterns';
 import { dueSteps, nextGridStep, Scheduler, stepTime } from './scheduler';
 
@@ -168,8 +169,8 @@ describe('analysis', () => {
 });
 
 describe('styles and grooves', () => {
-  it('every style has real grooves and fills that fit their bars', () => {
-    for (const id of STYLE_IDS) {
+  it('every recorded style has real grooves and fills that fit their bars', () => {
+    for (const id of STYLE_IDS.filter((s) => !STYLES[s].programmed)) {
       const g = grooves(id);
       expect(g.beats.length, id).toBeGreaterThanOrEqual(4);
       expect(g.fills.length, id).toBeGreaterThanOrEqual(2);
@@ -219,6 +220,30 @@ describe('styles and grooves', () => {
   });
 });
 
+describe('runway', () => {
+  it('cycles verse, build and lift, and keeps the pulse throughout', () => {
+    const sections = Array.from({ length: RUNWAY_CYCLE }, (_, b) => runwaySection(b).section);
+    expect(sections.filter((s) => s === 'verse')).toHaveLength(16);
+    expect(sections.filter((s) => s === 'build')).toHaveLength(8);
+    expect(sections.filter((s) => s === 'lift')).toHaveLength(8);
+    // Verse, then build, then lift, then back to the verse.
+    expect(sections.indexOf('build')).toBeGreaterThan(sections.lastIndexOf('verse'));
+    expect(sections.indexOf('lift')).toBeGreaterThan(sections.lastIndexOf('build'));
+    expect(runwaySection(RUNWAY_CYCLE).section).toBe('verse');
+    expect(runwaySection(-1).section).toBe('lift');
+  });
+
+  it('rolls the acid bass between the kicks', () => {
+    expect(RUNWAY_BASS).toHaveLength(16);
+    RUNWAY_BASS.forEach((n, i) => (i % 4 === 0 ? expect(n).toBeNull() : expect(n).not.toBeNull()));
+  });
+
+  it('is the default style and is programmed, not sampled', () => {
+    expect(STYLES.runway.programmed).toBe(true);
+    expect(grooves('runway').beats).toEqual([]);
+  });
+});
+
 describe('cue layer', () => {
   it('gives every slot its own pitch, rising with the slot', () => {
     expect(new Set(SLOT_NOTES).size).toBe(4);
@@ -227,9 +252,37 @@ describe('cue layer', () => {
 
   it('the guide and the demo cover every cue', () => {
     const kinds = (ts: { kind: string }[]) => new Set(ts.map((t) => t.kind));
-    const all = ['stab', 'clap', 'drop', 'tick', 'snap', 'sweep', 'blip'];
-    expect([...kinds(CUE_GUIDE.flatMap((c) => c.triggers))].sort()).toEqual([...all].sort());
+    const all = ['swap', 'skill', 'hold', 'burst', 'attack', 'charged', 'dash', 'jump'];
+    expect([...kinds(CUE_GUIDE.map((c) => c.trigger))].sort()).toEqual([...all].sort());
     expect([...kinds(DEMO.events.map((e) => e.trigger))].sort()).toEqual([...all].sort());
     expect(DEMO.length).toBe(64);
+  });
+});
+
+describe('voice', () => {
+  it('calls every key by name', () => {
+    const say = (t: Trigger) => wordFor(t);
+    expect([0, 1, 2, 3].map((slot) => say({ kind: 'swap', slot }))).toEqual(['one', 'two', 'three', 'four']);
+    expect(say({ kind: 'skill' })).toBe('E');
+    expect(say({ kind: 'hold' })).toBe('Eee');
+    expect(say({ kind: 'burst' })).toBe('Q');
+    expect(say({ kind: 'attack', first: true })).toBe('N');
+    expect(say({ kind: 'attack' })).toBeNull();
+    expect(say({ kind: 'charged' })).toBe('C');
+    expect(say({ kind: 'dash' })).toBe('dash');
+    expect(say({ kind: 'jump' })).toBe('jump');
+  });
+
+  it('puts the voiced part on the beat, after a short consonant', () => {
+    expect(anchorOf('E')).toBe(0);
+    expect(anchorOf('one')).toBe(0);
+    expect(anchorOf('Q')).toBeCloseTo(0.03);
+    expect(anchorOf('three')).toBeCloseTo(0.07);
+    for (const w of Object.keys(WORDS) as VoiceWord[]) {
+      // Short enough to sit between 8th notes at 128 BPM, except the drawn-out hold.
+      if (w !== 'Eee') expect(lengthOf(w), w).toBeLessThan(0.3);
+      expect(anchorOf(w), w).toBeLessThan(0.1);
+    }
+    expect(lengthOf('Eee')).toBeGreaterThan(lengthOf('E') * 2);
   });
 });

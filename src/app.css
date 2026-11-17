@@ -341,3 +341,19 @@ button.rhythm { color: #c9b6ff; border-color: #4a3780; background: #1d1630; }
 button.rhythm:hover:not(:disabled) { background: #2a2045; border-color: #6a52b0; }
 .track-line { display: flex; align-items: center; gap: 8px; color: #c9b6ff; min-height: 30px; }
 .track-line span { flex: 1; }
+
+/* Rhythm-mode judgements */
+.g-perfect { --g: #5eead4; }
+.g-good { --g: var(--ok); }
+.g-early { --g: #93c5fd; }
+.g-late { --g: var(--warn); }
+.g-miss { --g: var(--bad); }
+.g-none { --g: var(--muted); }
+.judge-row { display: flex; align-items: center; gap: 14px; font-size: 13px; font-variant-numeric: tabular-nums; min-height: 34px; }
+.judge-row .grade { color: var(--g); font-size: 22px; font-weight: 700; display: inline-flex; align-items: baseline; gap: 8px; min-width: 190px; transform-origin: left center; animation: grade-pop 0.18s ease-out; }
+.judge-row .grade small { font-size: 13px; font-weight: 500; color: var(--muted); }
+.judge-row .streak { color: var(--muted); }
+.judge-row .counts { display: flex; gap: 12px; color: var(--muted); }
+.judge-row .counts b { color: var(--g); }
+@keyframes grade-pop { from { transform: scale(1.25); opacity: 0.4; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .judge-row .grade { animation: none; } }

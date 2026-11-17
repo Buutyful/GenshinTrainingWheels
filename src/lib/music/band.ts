@@ -41,11 +41,25 @@ interface StyleDef {
   /** Final lowpass on the band, Hz (lo-fi warmth). */
   tone: number;
   reverb: number;
+  /** Programmed by `Band.playRunway` instead of played from recorded grooves. */
+  programmed?: boolean;
 }
 
 const ch = (s: string) => s.split(' ');
 
 export const STYLES: Record<MusicStyle, StyleDef> = {
+  runway: {
+    label: 'Runway techno',
+    blurb: 'Fashion-show electroclash: dry four-on-the-floor, rolling acid bass, cold stabs, string builds, supersaw lifts.',
+    scale: 1,
+    chords: [ch('A3 C4 E4 G4'), ch('F3 A3 C4 E4'), ch('G3 C4 D4 G4'), ch('E3 G3 B3 D4')],
+    keysAt: [],
+    keysLen: 0,
+    bassOctave: 2,
+    tone: 14000,
+    reverb: 0.12,
+    programmed: true,
+  },
   hiphop: {
     label: 'Lo-fi hip-hop',
     blurb: 'Laid-back, half-time, warm electric piano. Easy on the ears for long sessions.',
@@ -98,8 +112,25 @@ export const STYLES: Record<MusicStyle, StyleDef> = {
 export const STYLE_IDS = Object.keys(STYLES) as MusicStyle[];
 
 export function grooves(style: MusicStyle): { beats: GrooveSrc[]; fills: GrooveSrc[] } {
-  return (grooveData.styles as unknown as Record<MusicStyle, { beats: GrooveSrc[]; fills: GrooveSrc[] }>)[style];
+  return (grooveData.styles as unknown as Record<MusicStyle, { beats: GrooveSrc[]; fills: GrooveSrc[] }>)[style] ?? { beats: [], fills: [] };
 }
+
+/**
+ * Runway's 32-bar cycle: a restrained verse (pulse, rolling bass, stabs punctuating), a build
+ * (strings rising, filter opening, a riser and a snare roll) and a euphoric lift (wide supersaw
+ * chords). The pulse never stops.
+ */
+export type RunwaySection = 'verse' | 'build' | 'lift';
+export const RUNWAY_CYCLE = 32;
+export function runwaySection(bar: number): { section: RunwaySection; barIn: number; of: number } {
+  const c = ((bar % RUNWAY_CYCLE) + RUNWAY_CYCLE) % RUNWAY_CYCLE;
+  if (c < 16) return { section: 'verse', barIn: c, of: 16 };
+  if (c < 24) return { section: 'build', barIn: c - 16, of: 8 };
+  return { section: 'lift', barIn: c - 24, of: 8 };
+}
+
+/** Rolling acid line over one bar: semitones above the root per 16th, null where the kick is. */
+export const RUNWAY_BASS: (number | null)[] = [null, 0, 12, 0, null, 0, 0, 12, null, 0, 12, 0, null, 0, 3, 12];
 
 /** Groove bars per phrase; the last one is a fill when fills are on. */
 export const PHRASE_BARS = 4;
@@ -296,6 +327,122 @@ class Voices {
     }
   }
 
+  // ---- runway (electroclash techno) voices
+
+  /** Rolling acid bass: a saw into a resonant 24 dB lowpass with an envelope; accents open it further. */
+  acid(dest: AudioNode, hz: number, t: number, dur: number, o: { cutoff: number; accent: boolean; slideFrom?: number }): void {
+    const saw = this.osc('sawtooth', o.slideFrom ?? hz, t, dur);
+    if (o.slideFrom) saw.frequency.exponentialRampToValueAtTime(hz, t + 0.05);
+    const f1 = this.filter('lowpass', o.cutoff, 6);
+    const f2 = this.filter('lowpass', o.cutoff, 0.7);
+    const peak = Math.min(9000, o.cutoff * (o.accent ? 6 : 3.5));
+    for (const f of [f1, f2]) {
+      f.frequency.setValueAtTime(peak, t);
+      f.frequency.exponentialRampToValueAtTime(o.cutoff, t + (o.accent ? 0.14 : 0.2));
+    }
+    const amp = this.ac.createGain();
+    const level = o.accent ? 0.16 : 0.12;
+    amp.gain.setValueAtTime(0, t);
+    amp.gain.linearRampToValueAtTime(level, t + 0.003);
+    amp.gain.setValueAtTime(level, t + dur - 0.01);
+    amp.gain.linearRampToValueAtTime(0, t + dur);
+    saw.connect(f1).connect(f2).connect(this.shaper(2)).connect(amp).connect(dest);
+  }
+
+  /** Sub-bass foundation: a clean sine. */
+  sub(dest: AudioNode, hz: number, t: number, dur: number, gain = 0.32): void {
+    const amp = this.ac.createGain();
+    amp.gain.setValueAtTime(0, t);
+    amp.gain.linearRampToValueAtTime(gain, t + 0.006);
+    amp.gain.setValueAtTime(gain, t + dur - 0.02);
+    amp.gain.linearRampToValueAtTime(0, t + dur);
+    this.osc('sine', hz, t, dur).connect(amp).connect(dest);
+  }
+
+  /** Cold, detuned, metallic stab: detuned saws plus a ring-modulated edge, filtered down fast. */
+  coldStab(dest: AudioNode, hzs: number[], t: number, vel: number): void {
+    const dur = 0.2;
+    const lp = this.filter('lowpass', 4200, 1.2);
+    lp.frequency.setValueAtTime(5200, t);
+    lp.frequency.exponentialRampToValueAtTime(900, t + dur);
+    const hp = this.filter('highpass', 320);
+    lp.connect(hp).connect(this.env(t, 0.09 * vel, dur, 0.002)).connect(dest);
+    for (const hz of hzs) {
+      this.osc('sawtooth', hz, t, dur, -14).connect(lp);
+      this.osc('sawtooth', hz, t, dur, 14).connect(lp);
+      // Ring modulation by an inharmonic partner gives the metallic edge.
+      const ring = this.ac.createGain();
+      ring.gain.value = 0;
+      this.osc('sine', hz * 2.41, t, dur).connect(ring.gain);
+      this.osc('square', hz, t, dur).connect(ring).connect(this.env(t, 0.5, dur * 0.6)).connect(lp);
+    }
+  }
+
+  /** A sparse atmospheric pad: detuned saws, dark, slow in and out. */
+  pad(dest: AudioNode, hzs: number[], t: number, dur: number, level: number): void {
+    const lp = this.filter('lowpass', 1100, 0.5);
+    const amp = this.ac.createGain();
+    amp.gain.setValueAtTime(0, t);
+    amp.gain.linearRampToValueAtTime(level, t + Math.min(0.8, dur / 3));
+    amp.gain.setValueAtTime(level, t + dur - 0.6);
+    amp.gain.linearRampToValueAtTime(0, t + dur);
+    lp.connect(amp).connect(dest);
+    for (const hz of hzs) {
+      this.osc('sawtooth', hz, t, dur, -8).connect(lp);
+      this.osc('sawtooth', hz, t, dur, 8).connect(lp);
+    }
+  }
+
+  /** Orchestral-style strings for builds: an ensemble of saws, swelling, opening from `bright0` to `bright1`. */
+  strings(dest: AudioNode, hzs: number[], t: number, dur: number, level: number, bright0: number, bright1: number): void {
+    const lp = this.filter('lowpass', 700 + bright0 * 5000, 0.6);
+    lp.frequency.setValueAtTime(700 + bright0 * 5000, t);
+    lp.frequency.linearRampToValueAtTime(700 + bright1 * 5000, t + dur);
+    const amp = this.ac.createGain();
+    amp.gain.setValueAtTime(0, t);
+    amp.gain.linearRampToValueAtTime(level, t + Math.min(1.2, dur / 2));
+    amp.gain.setValueAtTime(level, t + dur - 0.15);
+    amp.gain.linearRampToValueAtTime(0, t + dur);
+    lp.connect(amp).connect(dest);
+    for (const hz of hzs) for (const d of [-11, 0, 11]) this.osc('sawtooth', hz, t, dur, d).connect(lp);
+  }
+
+  /** The chorus lift: three wide, detuned saws per note (left, centre, right). Sustained chords, not a drop. */
+  supersaw(dest: AudioNode, hzs: number[], t: number, dur: number, level: number): void {
+    const hp = this.filter('highpass', 260);
+    const lp = this.filter('lowpass', 7000, 0.5);
+    const amp = this.ac.createGain();
+    amp.gain.setValueAtTime(0, t);
+    amp.gain.linearRampToValueAtTime(level, t + 0.03);
+    amp.gain.setValueAtTime(level * 0.85, t + dur - 0.2);
+    amp.gain.linearRampToValueAtTime(0, t + dur);
+    hp.connect(lp).connect(amp).connect(dest);
+    for (const hz of hzs) {
+      [-22, 0, 22].forEach((d, i) => {
+        const pan = this.ac.createStereoPanner();
+        pan.pan.value = (i - 1) * 0.85;
+        this.osc('sawtooth', hz, t + i * 0.0007, dur, d).connect(pan).connect(hp);
+      });
+    }
+  }
+
+  /** Tension before the lift: band-passed noise sweeping up and swelling. */
+  riser(dest: AudioNode, t: number, dur: number, level = 0.05): void {
+    const src = this.ac.createBufferSource();
+    src.buffer = this.noiseBuf;
+    src.loop = true;
+    src.start(t);
+    src.stop(t + dur + 0.05);
+    const bp = this.filter('bandpass', 300, 2);
+    bp.frequency.setValueAtTime(300, t);
+    bp.frequency.exponentialRampToValueAtTime(7000, t + dur);
+    const g = this.ac.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(level, t + dur * 0.95);
+    g.gain.linearRampToValueAtTime(0, t + dur);
+    src.connect(bp).connect(g).connect(dest);
+  }
+
   /** A quiet vinyl bed for lo-fi: filtered noise with the odd crackle. */
   vinyl(dest: AudioNode, t: number, dur: number): void {
     this.noise(dest, t, { type: 'bandpass', hz: 3000, q: 0.5, peak: 0.006, decay: dur, attack: 0.05 });
@@ -312,6 +459,8 @@ type Ctx = Tone.BaseContext;
 type BassKind = 'sub' | 'slap' | 'deep' | 'pick';
 
 const VOICING: Record<MusicStyle, { keys: 'epiano' | 'clav' | 'piano' | 'power'; bass: BassKind; kick: { pitchDecay: number; octaves: number; decay: number } }> = {
+  // Dry and punchy, not distorted.
+  runway: { keys: 'piano', bass: 'deep', kick: { pitchDecay: 0.032, octaves: 5.5, decay: 0.26 } },
   hiphop: { keys: 'epiano', bass: 'sub', kick: { pitchDecay: 0.05, octaves: 5, decay: 0.45 } },
   funk: { keys: 'clav', bass: 'slap', kick: { pitchDecay: 0.03, octaves: 6, decay: 0.28 } },
   house: { keys: 'piano', bass: 'deep', kick: { pitchDecay: 0.06, octaves: 7, decay: 0.42 } },
@@ -334,7 +483,13 @@ export class Band {
   private toneFilter: Tone.Filter;
   /** Music output; connect it where the music should go. */
   readonly out: Tone.Gain;
-  private duck: Tone.Gain;
+  /**
+   * Cue sidechain and kick pump are plain Web Audio gains: Tone's Param keeps every automation
+   * event and rescans that history on each change, which grew without bound (one pump per beat).
+   */
+  private duck: GainNode;
+  /** Kick sidechain on bass and synths (drums bypass it). */
+  private pump: GainNode;
   private style: MusicStyle;
   readonly ready: Promise<void>;
 
@@ -346,7 +501,8 @@ export class Band {
     this.v = new Voices(ctx.rawContext as unknown as Raw);
     this.style = STYLES[m.style] ? m.style : 'hiphop';
     this.out = new Tone.Gain({ context, gain: 0.8 });
-    this.duck = new Tone.Gain({ context, gain: 1 });
+    const raw = ctx.rawContext as unknown as Raw;
+    this.duck = raw.createGain();
     this.toneFilter = new Tone.Filter({ context, frequency: 9000, type: 'lowpass', rolloff: -12 });
     this.reverb = new Tone.Reverb({ context, decay: 1.6, preDelay: 0.01, wet: 0.2 });
     this.ready = this.reverb.generate().then(() => undefined);
@@ -354,11 +510,15 @@ export class Band {
     this.drumBus = new Tone.Gain({ context });
     this.bassBus = new Tone.Gain({ context });
     this.keysBus = new Tone.Gain({ context });
+    this.pump = raw.createGain();
     this.drumBus.connect(this.toneFilter);
-    this.bassBus.connect(this.toneFilter);
+    this.bassBus.connect(this.pump);
     this.keysBus.connect(this.reverb);
-    this.reverb.connect(this.toneFilter);
-    this.toneFilter.chain(this.duck, comp, this.out);
+    this.reverb.connect(this.pump);
+    Tone.connect(this.pump, this.toneFilter);
+    this.toneFilter.connect(this.duck);
+    Tone.connect(this.duck, comp);
+    comp.connect(this.out);
     this.drumIn = this.drumBus.input as unknown as AudioNode;
     this.bassIn = this.bassBus.input as unknown as AudioNode;
     this.keysIn = this.keysBus.input as unknown as AudioNode;
@@ -385,7 +545,6 @@ export class Band {
   /** Dip the band briefly so an action cue stands out (cue sidechain). */
   duckAt(time: number, depth = 0.35): void {
     const g = this.duck.gain;
-    g.cancelScheduledValues(time);
     g.setTargetAtTime(1 - depth, time, 0.004);
     g.setTargetAtTime(1, time + 0.05, 0.06);
   }
@@ -396,7 +555,9 @@ export class Band {
   }
 
   dispose(): void {
-    for (const n of [this.kick, this.toms, this.snareBody, this.drumBus, this.bassBus, this.keysBus, this.reverb, this.toneFilter, this.duck, this.out]) n.dispose();
+    for (const n of [this.kick, this.toms, this.snareBody, this.drumBus, this.bassBus, this.keysBus, this.reverb, this.toneFilter, this.out]) n.dispose();
+    this.pump.disconnect();
+    this.duck.disconnect();
   }
 
   /** Plays everything of app 16th `step` at audio time `time`. */
@@ -411,6 +572,8 @@ export class Band {
     this.drumBus.gain.value = m.drums;
     this.bassBus.gain.value = m.bass;
     this.keysBus.gain.value = m.keys;
+
+    if (s.programmed) return this.playRunway(step, time);
 
     // App 16ths per groove 16th; in half-time only every other app 16th starts a groove 16th.
     if (step % s.scale !== 0) return;
@@ -475,6 +638,78 @@ export class Band {
           else this.v.piano(this.keysIn, hz, at, len, vel);
         });
       }
+    }
+  }
+
+  /** Runway techno, programmed straight to the spec: quantised, mechanical, no swing. */
+  private playRunway(step: number, time: number): void {
+    const v = this.v;
+    const unit = stepSec();
+    const bar = Math.floor(step / STEPS_PER_BAR);
+    const inBar = ((step % STEPS_PER_BAR) + STEPS_PER_BAR) % STEPS_PER_BAR;
+    const { section, barIn, of } = runwaySection(bar);
+    const progress = (barIn + inBar / STEPS_PER_BAR) / of;
+    const chords = STYLES.runway.chords;
+    const chord = chords[Math.floor((((bar % 8) + 8) % 8) / 2)];
+    const hzs = chord.map((n) => midiToHz(noteToMidi(n)));
+    const root = noteToMidi(chord[0]) % 12;
+    const d = this.drumIn;
+
+    // ---- drums: kick on every beat, tight clap on 2 and 4, crisp 16th hats, sparse metal.
+    const hits: { piece: Piece; t: number; vel: number }[] = [];
+    if (inBar % 4 === 0) {
+      hits.push({ piece: 'kick', t: time, vel: 0.95 });
+      // The kick pumps the bass and synths.
+      const g = this.pump.gain;
+      g.setTargetAtTime(0.5, time, 0.003);
+      g.setTargetAtTime(1, time + 0.03, 0.05);
+    }
+    for (const x of hits) this.hit(x.piece, x.t, x.vel);
+    if (inBar === 4 || inBar === 12) this.clap(time, section === 'lift' ? 0.85 : 0.7);
+    const hatVel = [0.35, 0.15, 0.6, 0.15][inBar % 4];
+    if (section === 'lift' && inBar % 4 === 2) v.noise(d, time, { type: 'highpass', hz: 7000, peak: 0.09, decay: 0.22 });
+    else v.noise(d, time, { type: 'highpass', hz: 9000, peak: 0.12 * hatVel, decay: 0.035 });
+    // Industrial accents: a short metallic ping and a rim click, few and precise.
+    if (inBar === 7 && bar % 2 === 1) v.noise(d, time, { type: 'bandpass', hz: 3300, q: 9, peak: 0.25, decay: 0.07 });
+    if (inBar === 14 && bar % 4 === 3) v.noise(d, time, { type: 'bandpass', hz: 1900, q: 3, peak: 0.3, decay: 0.03 });
+    // Build: a snare roll over its last two bars, getting denser and louder.
+    if (section === 'build' && barIn >= 6) {
+      const dense = barIn === 7 ? 1 : 2;
+      if (inBar % dense === 0) {
+        const vel = 0.25 + 0.6 * ((barIn - 6) * 16 + inBar) / 32;
+        v.noise(d, time, { type: 'highpass', hz: 1800, peak: 0.3 * vel, decay: 0.1 });
+      }
+    }
+    // A crash marks the lift, a softer one the return to the verse.
+    if (inBar === 0 && ((section === 'lift' && barIn === 0) || (section === 'verse' && barIn === 0))) {
+      v.noise(d, time, { type: 'highpass', hz: 4500, peak: section === 'lift' ? 0.18 : 0.08, decay: 1.4 });
+    }
+
+    // ---- bass: rolling acid between the kicks, a sub on the off-beats.
+    const off = RUNWAY_BASS[inBar];
+    if (off !== null) {
+      const cutoff = section === 'build' ? 380 + 1400 * progress : section === 'lift' ? 900 : 380 + 120 * Math.sin((bar % 8) * 0.8);
+      const hz = midiToHz(12 * 3 + root + off);
+      const prev = RUNWAY_BASS[inBar - 1];
+      const slide = inBar === 14 && prev !== null ? midiToHz(12 * 3 + root + prev) : undefined;
+      v.acid(this.bassIn, hz, time, unit * 0.85, { cutoff, accent: off === 12, slideFrom: slide });
+    }
+    if (inBar % 4 === 2) v.sub(this.bassIn, midiToHz(12 * 2 + root), time, unit * 1.6);
+
+    // ---- synths: punctuate the verse, build with strings, lift with supersaws.
+    const twoBarStart = inBar === 0 && bar % 2 === 0;
+    if (section === 'verse') {
+      if ((inBar === 6 && bar % 2 === 1) || (inBar === 3 && bar % 4 === 2)) v.coldStab(this.keysIn, hzs, time, 0.9);
+      if (twoBarStart && barIn >= 8) v.pad(this.keysIn, hzs, time, unit * 32, 0.035);
+    } else if (section === 'build') {
+      if (twoBarStart) {
+        const p0 = barIn / of;
+        v.strings(this.keysIn, hzs, time, unit * 32, 0.04 + 0.05 * p0, p0, p0 + 2 / of);
+      }
+      if (barIn === 4 && inBar === 0) v.riser(d, time, unit * 64);
+      if (inBar === 6 && bar % 2 === 1) v.coldStab(this.keysIn, hzs, time, 0.7);
+    } else if (twoBarStart) {
+      v.supersaw(this.keysIn, hzs, time, unit * 31, 0.065);
     }
   }
 

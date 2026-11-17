@@ -28,6 +28,7 @@ export const DEFAULT_SETTINGS: Settings = {
     policy: 'resync',
   },
   audio: {
+    cueSound: 'sounds',
     master: 0.9,
     muted: false,
     volume: 0.6,
@@ -37,9 +38,11 @@ export const DEFAULT_SETTINGS: Settings = {
     hesitateMs: 1500,
     feedback: true,
     hitTick: false,
+    judgeSounds: true,
+    latencyMs: 0,
   },
   music: {
-    style: 'hiphop',
+    style: 'runway',
     groove: -1,
     fills: true,
     volume: 0.6,

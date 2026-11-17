@@ -54,6 +54,26 @@ export interface RunMetrics {
   inputs: number;
   /** Per flattened step, so the metrics view can say which steps keep going wrong. */
   steps: { sig: string; missed: number[]; wrong: number[] };
+  /** Rhythm mode only. */
+  rhythm?: RhythmMetrics;
+}
+
+/** Rhythm-mode judgement of one step. */
+export type Grade = 'perfect' | 'good' | 'early' | 'late' | 'miss';
+
+/** How a rhythm-mode run sat on the beat. */
+export interface RhythmMetrics {
+  counts: Record<Grade, number>;
+  /** Average offset of the steps played, ms; negative means early. */
+  meanMs: number | null;
+  /** Standard deviation of those offsets, ms. */
+  spreadMs: number | null;
+  /** Longest run of perfect or good steps. */
+  bestStreak: number;
+  /** Calibrated latency the run was judged with, ms. */
+  latencyMs: number;
+  /** Per flattened step: steps played (not missed), their average offset, and misses. */
+  steps: { sig: string; n: number[]; meanMs: number[]; misses: number[] };
 }
 
 export interface SessionSummary {
@@ -136,7 +156,11 @@ export type Bindings = Record<BindKey, string[]>;
 export type Guidance = 'full' | 'swaps' | 'adaptive' | 'off';
 export type OffTrackPolicy = 'resync' | 'restart';
 
+/** How cues sound: a distinct sound per key, or a voice calling the key. */
+export type CueSound = 'sounds' | 'voice';
+
 export interface AudioSettings {
+  cueSound: CueSound;
   /** Whole-app level, 0..1; multiplies cues and music. */
   master: number;
   muted: boolean;
@@ -151,6 +175,13 @@ export interface AudioSettings {
   hesitateMs: number;
   feedback: boolean;
   hitTick: boolean;
+  /** Rhythm mode: perfect / good / early / late / miss sounds. */
+  judgeSounds: boolean;
+  /**
+   * How late this device's presses land after the sound they answer, ms (output plus input
+   * latency plus the player's own habit). Measured by the tap-along calibration; per device.
+   */
+  latencyMs: number;
 }
 
 /** How long the player takes between steps; learned from their own clean play. */
@@ -184,7 +215,7 @@ export interface Settings {
   music: MusicSettings;
 }
 
-export type MusicStyle = 'hiphop' | 'funk' | 'house' | 'rock';
+export type MusicStyle = 'runway' | 'hiphop' | 'funk' | 'house' | 'rock';
 
 /** The rhythm-mode backing band; the action cues are the same in every style. */
 export interface MusicSettings {

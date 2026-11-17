@@ -139,6 +139,13 @@
     </p>
     <div class="form">
       <label class="field">
+        <span>Cue sound</span>
+        <select bind:value={s.audio.cueSound}>
+          <option value="sounds">A distinct sound per key</option>
+          <option value="voice">A voice calls the key (one, two, E, Q, N, C…)</option>
+        </select>
+      </label>
+      <label class="field">
         <span>Cue</span>
         <select bind:value={s.audio.guidance}>
           <option value="full">Every step, ahead of time</option>
@@ -190,6 +197,21 @@
       <div class="spacer"></div>
       <button onclick={() => go({ name: 'jam' })}>Open the Music lab</button>
     </div>
+    <h2>Rhythm mode judging</h2>
+    <p class="muted">
+      Each step is judged against the track: perfect within ±50 ms, good within ±110 ms, then early or late; skills, bursts
+      and swaps further off, or left out, are misses. Attacks, dashes and jumps are judged loosely and never miss.
+    </p>
+    <div class="form">
+      <label class="field">
+        <span>Latency · {s.audio.latencyMs} ms (how late your presses land after what you hear)</span>
+        <input type="range" min="-100" max="300" step="1" bind:value={s.audio.latencyMs} />
+      </label>
+      <div class="row">
+        <button onclick={() => go({ name: 'calibrate' })}>Calibrate by tapping along</button>
+      </div>
+    </div>
+    <label class="check"><input type="checkbox" bind:checked={s.audio.judgeSounds} /><span>Judgement sounds (perfect, good, early, late, miss)</span></label>
     <p class="muted small">{GROOVE_CREDIT}</p>
   </section>
 

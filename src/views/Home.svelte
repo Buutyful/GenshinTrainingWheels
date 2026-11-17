@@ -42,7 +42,7 @@
     const track = currentTrack(l);
     if (wasThis || !track) return;
     const steps = flatten(l.steps, l.loop, l.loop ? (l.loopStart ?? 0) : 0);
-    const p = new TrackPlayer(app.data.settings.music, arrange(steps, track), true);
+    const p = new TrackPlayer(app.data.settings.music, arrange(steps, track), true, () => app.data.settings.audio.cueSound);
     player = p;
     listening = l.id;
     await p.start();

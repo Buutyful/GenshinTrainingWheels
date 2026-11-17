@@ -250,21 +250,21 @@ export interface Arrangement {
 export function triggersFor(step: FlatStep): Trigger[] {
   switch (step.action) {
     case 'swap':
-      return [{ kind: 'stab', slot: step.slot }];
+      return [{ kind: 'swap', slot: step.slot }];
     case 'skill':
-      return [{ kind: 'clap' }];
+      return [{ kind: 'skill' }];
     case 'skillHold':
-      return [{ kind: 'clap' }, { kind: 'stab', slot: step.slot, hold: true }];
+      return [{ kind: 'hold' }];
     case 'burst':
-      return [{ kind: 'drop' }];
+      return [{ kind: 'burst' }];
     case 'na':
-      return [{ kind: 'tick' }];
+      return [{ kind: 'attack', first: true }];
     case 'ca':
-      return [{ kind: 'snap' }];
+      return [{ kind: 'charged' }];
     case 'dash':
-      return [{ kind: 'sweep' }];
+      return [{ kind: 'dash' }];
     case 'jump':
-      return [{ kind: 'blip' }];
+      return [{ kind: 'jump' }];
   }
 }
 
@@ -278,7 +278,7 @@ export function arrange(steps: FlatStep[], track: RhythmTrack): Arrangement {
       // One tick per click, spread evenly from the first click to the last.
       const span = track.end[i] - p;
       for (let k = 0; k < s.count; k++) {
-        events.push({ pos: p + Math.round((k * span) / (s.count - 1)), step: i, trigger: { kind: 'tick' } });
+        events.push({ pos: p + Math.round((k * span) / (s.count - 1)), step: i, trigger: { kind: 'attack', first: k === 0 } });
       }
     } else {
       for (const trigger of triggersFor(s)) events.push({ pos: p, step: i, trigger });
@@ -298,24 +298,23 @@ export function fromEvents(bars: number, events: { pos: number; trigger: Trigger
 
 /** A 4-bar rotation-like demo that uses every cue once or more. */
 export const DEMO = fromEvents(4, [
-  { pos: 0, trigger: { kind: 'stab', slot: 0 } },
-  { pos: 2, trigger: { kind: 'clap' } },
-  { pos: 8, trigger: { kind: 'stab', slot: 1 } },
-  { pos: 10, trigger: { kind: 'drop' } },
-  { pos: 14, trigger: { kind: 'clap' } },
-  { pos: 20, trigger: { kind: 'stab', slot: 2 } },
-  { pos: 22, trigger: { kind: 'clap' } },
-  { pos: 23, trigger: { kind: 'stab', slot: 2, hold: true } },
-  { pos: 30, trigger: { kind: 'sweep' } },
-  { pos: 32, trigger: { kind: 'stab', slot: 3 } },
-  { pos: 34, trigger: { kind: 'tick' } },
-  { pos: 36, trigger: { kind: 'tick' } },
-  { pos: 38, trigger: { kind: 'tick' } },
-  { pos: 40, trigger: { kind: 'snap' } },
-  { pos: 46, trigger: { kind: 'blip' } },
-  { pos: 48, trigger: { kind: 'stab', slot: 0 } },
-  { pos: 50, trigger: { kind: 'tick' } },
-  { pos: 52, trigger: { kind: 'tick' } },
-  { pos: 54, trigger: { kind: 'tick' } },
-  { pos: 56, trigger: { kind: 'snap' } },
+  { pos: 0, trigger: { kind: 'swap', slot: 0 } },
+  { pos: 2, trigger: { kind: 'skill' } },
+  { pos: 8, trigger: { kind: 'swap', slot: 1 } },
+  { pos: 10, trigger: { kind: 'burst' } },
+  { pos: 14, trigger: { kind: 'skill' } },
+  { pos: 20, trigger: { kind: 'swap', slot: 2 } },
+  { pos: 22, trigger: { kind: 'hold' } },
+  { pos: 30, trigger: { kind: 'dash' } },
+  { pos: 32, trigger: { kind: 'swap', slot: 3 } },
+  { pos: 34, trigger: { kind: 'attack', first: true } },
+  { pos: 36, trigger: { kind: 'attack' } },
+  { pos: 38, trigger: { kind: 'attack' } },
+  { pos: 40, trigger: { kind: 'charged' } },
+  { pos: 46, trigger: { kind: 'jump' } },
+  { pos: 48, trigger: { kind: 'swap', slot: 0 } },
+  { pos: 50, trigger: { kind: 'attack', first: true } },
+  { pos: 52, trigger: { kind: 'attack' } },
+  { pos: 54, trigger: { kind: 'attack' } },
+  { pos: 56, trigger: { kind: 'charged' } },
 ]);

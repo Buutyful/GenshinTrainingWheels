@@ -170,8 +170,10 @@ describe('buildTrack', () => {
     const t = buildTrack(flat, true, lap, timings, 0);
     expect(t.pos).toEqual([0, 2, 4, 12, 14]);
     expect(t.end[2]).toBe(8);
-    const ticks = arrange(flat, t).events.filter((e) => e.trigger.kind === 'tick').map((e) => e.pos);
-    expect(ticks).toEqual([4, 6, 8]);
+    const clicks = arrange(flat, t).events.filter((e) => e.trigger.kind === 'attack');
+    expect(clicks.map((e) => e.pos)).toEqual([4, 6, 8]);
+    // Only the first click of the string is "N" in the voice set.
+    expect(clicks.map((e) => (e.trigger.kind === 'attack' ? !!e.trigger.first : null))).toEqual([true, false, false]);
   });
 
   it('covers only the looping part when there is an opener', () => {
@@ -196,19 +198,19 @@ describe('arrange', () => {
     const a = arrange(r.flat, buildTrack(r.flat, true, r.laps[1], r.timings, 0));
     expect(a.length).toBe(32);
     expect(a.targets).toEqual(GRID);
-    const what = (p: number) => a.at.get(p)?.map((x) => (x.kind === 'stab' ? `stab${x.slot}` : x.kind));
-    expect(what(0)).toEqual(['stab0']);
-    expect(what(2)).toEqual(['clap']);
-    expect(what(8)).toEqual(['stab1']);
-    expect(what(10)).toEqual(['drop']);
-    expect(what(20)).toEqual(['clap']);
+    const what = (p: number) => a.at.get(p)?.map((x) => (x.kind === 'swap' ? `swap${x.slot}` : x.kind));
+    expect(what(0)).toEqual(['swap0']);
+    expect(what(2)).toEqual(['skill']);
+    expect(what(8)).toEqual(['swap1']);
+    expect(what(10)).toEqual(['burst']);
+    expect(what(20)).toEqual(['skill']);
     expect(a.at.get(1)).toBeUndefined();
   });
 
-  it('a hold skill sustains its slot chord', () => {
+  it('a hold skill has its own cue', () => {
     const flat: FlatStep[] = [{ slot: 2, action: 'skillHold', count: 1, implicit: false, src: 0, block: 0 }];
     const a = arrange(flat, { sig: '', bpm: 128, bars: 1, pos: [0], end: [0], lapMs: 0, recordedAt: 0 });
-    expect(a.at.get(0)).toEqual([{ kind: 'clap' }, { kind: 'stab', slot: 2, hold: true }]);
+    expect(a.at.get(0)).toEqual([{ kind: 'hold' }]);
   });
 
   it('ignores a track recorded on another rotation', () => {

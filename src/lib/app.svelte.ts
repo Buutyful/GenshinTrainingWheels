@@ -13,7 +13,8 @@ export type View =
   | { name: 'session'; id: string; mode?: SessionMode }
   | { name: 'metrics'; id: string }
   | { name: 'settings' }
-  | { name: 'jam' };
+  | { name: 'jam' }
+  | { name: 'calibrate' };
 
 export const app = $state<{ loaded: boolean; data: AppData; view: View; elevated: boolean | null }>({
   loaded: false,

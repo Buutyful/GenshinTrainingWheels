@@ -22,7 +22,7 @@
   let beatTimer: ReturnType<typeof setInterval> | undefined;
 
   async function start() {
-    const p = new TrackPlayer(app.data.settings.music, demo ? DEMO : null, true);
+    const p = new TrackPlayer(app.data.settings.music, demo ? DEMO : null, true, () => app.data.settings.audio.cueSound);
     player = p;
     playing = true;
     await p.start();
@@ -50,9 +50,9 @@
     m.groove = -1;
   }
 
-  async function cue(triggers: Trigger[]) {
+  async function cue(t: Trigger) {
     if (!playing) await start();
-    for (const t of triggers) player?.trigger(t);
+    player?.trigger(t);
   }
 
   function onKey(e: KeyboardEvent) {
@@ -67,7 +67,7 @@
     const c = CUE_GUIDE.find((x) => x.key === e.code);
     if (c) {
       e.preventDefault();
-      void cue(c.triggers);
+      void cue(c.trigger);
     }
   }
   window.addEventListener('keydown', onKey);
@@ -93,7 +93,8 @@
   let busy = $state(false);
   let report = $state<{ rows: { name: string; s: LevelStats }[]; renderMs: number; seconds: number } | null>(null);
   let lastWav: AudioBuffer | null = null;
-  const BARS = 8;
+  /** A full Runway cycle (verse, build, lift); 8 bars for the other styles. */
+  const BARS = $derived(STYLES[m.style].programmed ? 32 : 8);
 
   async function analyse() {
     busy = true;
@@ -101,14 +102,15 @@
       const settings = $state.snapshot(app.data.settings.music) as MusicSettings;
       const cuesAt = (i: number) => DEMO.at.get(i % DEMO.length);
       const t0 = performance.now();
-      const mix = await renderMusic(settings, { bars: BARS, cuesAt });
+      const cueSound = app.data.settings.audio.cueSound;
+      const mix = await renderMusic(settings, { bars: BARS, cuesAt, cueSound });
       const renderMs = performance.now() - t0;
       lastWav = mix;
       const st = (b: AudioBuffer) => levels(b.getChannelData(0), b.getChannelData(1));
       const rows = [
         { name: 'Mix', s: st(mix) },
         { name: 'Music only', s: st(await renderMusic(settings, { bars: BARS, cues: false })) },
-        { name: 'Cues only', s: st(await renderMusic(settings, { bars: BARS, cuesAt, music: false })) },
+        { name: 'Cues only', s: st(await renderMusic(settings, { bars: BARS, cuesAt, music: false, cueSound })) },
       ];
       report = { rows, renderMs, seconds: mix.duration };
       const wave = mono([mix.getChannelData(0), mix.getChannelData(1)]);
@@ -157,6 +159,11 @@
         </button>
       {/each}
     </div>
+    {#if STYLES[m.style].programmed}
+      <p class="muted small">
+        Programmed straight and mechanical, in a 32-bar cycle: 16 bars of verse, an 8-bar string build, an 8-bar supersaw lift.
+      </p>
+    {:else}
     <div class="row wrap">
       <label class="field grow">
         <span>Groove</span>
@@ -169,6 +176,7 @@
       </label>
       <label class="check"><input type="checkbox" bind:checked={m.fills} /><span>Drum fills</span></label>
     </div>
+    {/if}
     <div class="row wrap">
       <button class="primary" onclick={() => (playing ? stop() : start())}>{playing ? 'Stop' : 'Play'}</button>
       <span class="muted small">Enter · {BPM} BPM{STYLES[m.style].scale === 2 ? ', half-time feel' : ''}</span>
@@ -182,10 +190,14 @@
 
   <section class="panel">
     <h2>Cues</h2>
-    <p class="muted">One sound per action, each with a sharp start. Press the keys to play along; hits land on the next 16th.</p>
+    <p class="muted">One cue per key, each with a sharp start. Press the keys to play along; hits land on the next 16th.</p>
+    <div class="row wrap">
+      <label class="check"><input type="radio" name="cuesound" value="sounds" bind:group={app.data.settings.audio.cueSound} /><span>Distinct sounds</span></label>
+      <label class="check"><input type="radio" name="cuesound" value="voice" bind:group={app.data.settings.audio.cueSound} /><span>Voice calls the keys</span></label>
+    </div>
     <div class="row wrap">
       {#each CUE_GUIDE as c (c.label)}
-        <button onclick={() => cue(c.triggers)}>{c.label} <kbd>{keyLabel(c.key)}</kbd></button>
+        <button onclick={() => cue(c.trigger)}>{c.label} <kbd>{keyLabel(c.key)}</kbd></button>
       {/each}
     </div>
   </section>

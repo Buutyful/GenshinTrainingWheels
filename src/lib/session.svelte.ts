@@ -9,8 +9,9 @@ import { nowMs, startCapture, type StopCapture } from './platform';
 import { MetricsCollector } from './metrics';
 import { arrange, buildTrack, LapRecorder, validTrack, type CleanLap } from './music/arrange';
 import { TrackPlayer } from './music/player';
+import { LOST_AFTER, RhythmJudge, type Judgement } from './rhythm';
 import { isNoise } from './types';
-import type { GameAction, Loadout, RawEvent, RhythmTrack, SessionSummary, Settings, Slot, Timings } from './types';
+import type { GameAction, Grade, Loadout, RawEvent, RhythmTrack, SessionSummary, Settings, Slot, Timings } from './types';
 
 /** Practice: cues follow the player. Rhythm: a backing track the player keeps up with. */
 export type SessionMode = 'practice' | 'rhythm';
@@ -21,6 +22,13 @@ export interface MusicSnap {
   /** 16th in the lap while the track plays, else null. */
   lapStep: number | null;
   bars: number;
+}
+
+/** Rhythm mode: the latest judgement and running totals, for the live view. */
+export interface JudgeSnap {
+  last: (Judgement & { id: number }) | null;
+  counts: Record<Grade, number>;
+  streak: number;
 }
 
 export interface FeedItem {
@@ -83,6 +91,9 @@ export class Session {
   readonly targetMs: number | null;
   /** Rhythm mode: whether a track is playing (false while the first clean lap is recorded). */
   hasTrack = $state(false);
+  private judge: RhythmJudge | null = null;
+  private judgeId = 0;
+  judged = $state<JudgeSnap | null>(null);
 
   constructor(
     readonly loadout: Loadout,
@@ -107,8 +118,16 @@ export class Session {
     this.recorder = new LapRecorder(this.steps, loadout.loop, (lap) => this.onCleanLap(lap));
     if (mode === 'rhythm') {
       const track = validTrack(loadout.track, this.steps, sig);
-      this.player = new TrackPlayer(settings.music, track ? arrange(this.steps, track) : null, loadout.loop);
+      this.player = new TrackPlayer(
+        settings.music,
+        track ? arrange(this.steps, track) : null,
+        loadout.loop,
+        () => settings.audio.cueSound,
+        () => settings.audio.latencyMs,
+      );
       this.hasTrack = !!track;
+      this.judge = new RhythmJudge(this.steps, sig, settings.audio.latencyMs);
+      this.judged = { last: null, counts: { ...this.judge.counts }, streak: 0 };
     }
     this.snap = this.read(nowMs());
   }
@@ -156,7 +175,7 @@ export class Session {
       accuracy: t.accuracy ?? 0,
       bestLapMs: clean.length ? Math.min(...clean.map((l) => l.durationMs)) : null,
       avgLapMs: timed.length ? timed.reduce((s, l) => s + l.durationMs, 0) / timed.length : null,
-      metrics: this.metrics.result(),
+      metrics: { ...this.metrics.result(), ...(this.judge?.total ? { rhythm: this.judge.result() } : {}) },
     };
     const timings = this.learner.learned ? this.learner.timings : null;
     return { summary, steps: this.steps, stats: t.stats, laps: t.laps, totals: { ...t.totals }, timings, track: this.newTrack, mode: this.mode };
@@ -240,7 +259,26 @@ export class Session {
     } else if (e.kind === 'offtrack' || e.kind === 'resync' || e.kind === 'done') p.dropActions();
     if (started) {
       const pos = p.arrangement?.targets[started.index] ?? -1;
-      p.stepStarted(started.t, pos >= 0 ? pos : null);
+      const delta = p.stepStarted(started.t, pos >= 0 ? pos : null);
+      if (delta !== null && this.judge) this.onJudged(this.judge.hit(started.index, delta));
+    } else if (e.kind === 'skip' && e.missed > 0 && p.playing && this.judge) {
+      // Skipped steps are misses; one sound for the lot.
+      let last: Judgement | null = null;
+      for (const i of e.indices) if ((p.arrangement?.targets[i] ?? -1) >= 0) last = this.judge.skipped(i) ?? last;
+      if (last) this.onJudged(last);
+    }
+  }
+
+  private onJudged(j: Judgement): void {
+    const judge = this.judge!;
+    if (this.settings.audio.judgeSounds) this.player?.judged(j.grade);
+    this.judged = { last: { ...j, id: ++this.judgeId }, counts: { ...judge.counts }, streak: judge.streak };
+    if (judge.missStreak >= LOST_AFTER) {
+      judge.missStreak = 0;
+      // They have lost the beat: drop the cues, and the next step they play brings them back
+      // aligned to it (that step is not judged).
+      this.player?.dropActions();
+      this.push('warn', 'Lost the beat — the track re-joins on your next step');
     }
   }
 

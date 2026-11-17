@@ -1,7 +1,7 @@
 # Rhythm mode — design brief
 
-Status: **milestones 1–2 done** (engine, Jam lab, tracks from clean laps, Rhythm mode on
-Start), milestones 3–4 open. This is the hand-off
+Status: **milestones 1–3 done** (engine, Jam lab, tracks from clean laps, Rhythm mode on
+Start, judging + calibration), milestone 4 open. This is the hand-off
 document for building it. Read it whole before writing code; the "Constraints" section is not
 optional.
 
@@ -70,6 +70,81 @@ level; the band ducks ~35 % under each cue. The music is a choice of styles.
   1 ms attack) is the last stage; renders peak at −0.4 to −0.9 dB without clipping.
 - Tone's mono voices throw on out-of-order hits; drum hits are sorted per 16th and clamped per
   voice.
+
+### Cue sets (before milestone 3)
+
+- Cues are named after keys (`Trigger` kinds: swap(slot), skill, hold, burst, attack(first),
+  charged, dash, jump). `audio.cueSound`: `'sounds'` (default) or `'voice'`, used by both
+  Rhythm (cue layer) and Practice (`AudioOut.cue` says the word instead of the arcade motif).
+- Distinct sounds: each swap is its own instrument (marimba, pluck, glass bell, brass) and rises
+  with the slot; hold E = cowbell + rising whistle; charged = snare crack + thump.
+- Voice (`music/voice.ts`): formant synthesis (sawtooth source, three moving band-pass
+  resonators, filtered noise for consonants), female range, falling statement pitch; "Eee" for
+  hold rises. The voiced onset (vowel or r/w/y) is placed on the beat; the consonant before it
+  starts up to 70 ms early. The user had ruled out TTS earlier, then asked for a voice option;
+  this is not a speech engine and has no recordings.
+- Measured (cues only): every distinct sound starts 6–7 ms after its beat (the limiter's
+  look-ahead); both sets peak −1 to −10 dB and do not clip with the band.
+
+### Runway style (from the user's production spec)
+
+The user supplied a detailed spec of the reference track (fashion-show electroclash techno,
+~132 BPM, verse at 01:50). Implemented as `runway`, the default style, programmed in
+`Band.playRunway` (no dataset grooves: the spec asks for quantised, mechanical drums, no swing).
+
+- **Tempo stays 128 BPM**, not 132: the track is the player's lap snapped to the 128 grid, and
+  playing it at 132 would make them play the rotation ~3 % faster than they recorded it. Ask the
+  user before changing this.
+- Drums: dry punchy kick every beat (not distorted), tight clap on 2 and 4, 16th hats with an
+  off-beat accent (open hats in the lift), sparse metallic ping / rim accents, a snare roll over
+  the last two build bars, crashes into the lift and back into the verse.
+- Bass: rolling acid between the kicks (`RUNWAY_BASS`), filter opening through the build, plus a
+  sine sub on the off-beats. Kick pumps bass and synths (native gain; see below).
+- Synths: cold detuned ring-modulated stabs punctuate the verse; a dark pad in its second half;
+  strings swell and brighten through the build with a noise riser; the lift is sustained, wide
+  three-saw supersaw chords — a lift, not a big-room drop. A minor family: Am7, Fmaj7, Gsus, Em7,
+  two bars each, inside the cue pitches' key.
+- 32-bar cycle (`runwaySection`): verse 16, build 8, lift 8. Milestone 4 should tie the build/lift
+  to the rotation's Q instead of the clock.
+- Voice cues re-voiced to the spec's spoken-word delivery: deadpan, near-flat pitch, shorter
+  vowels, crisper consonants, a 3 kHz presence lift, dry. Swap 1 and 4 sounds became a cold
+  detuned stab and a metallic ring-mod ping (the marimba and brass were too warm).
+- Performance lessons: Tone's `Param` keeps its whole automation history and rescans it, so
+  per-beat automation (pump, cue duck) must use native `GainNode`s. Offline renders must
+  schedule bar by bar (`OfflineAudioContext.suspend`) like live playback, or thousands of idle
+  nodes make them look many times slower than the real load. Measured that way: Runway renders
+  at 5.2× real time (lo-fi 5.0×, funk 4.0×), peaks −0.5 dB, no clipping.
+
+### Milestone 3 notes
+
+- `src/lib/rhythm.ts` (pure, `rhythm.test.ts`): `grade()` with `WINDOWS` perfect ±50, good ±110,
+  early/late to ±250 ms, beyond that miss. Attacks, dashes and jumps (`isNoise`) get windows
+  ×`LOOSE` (2) and never miss. `RhythmJudge` keeps counts, mean offset, spread, streaks and per-step
+  averages; `calibrate()` / `tapOffsets()` for the tap-along.
+- What is judged: the moment a step *starts*, the same moment the track was recorded from (first
+  click of an attack string; a skill's key-up, since the interpreter emits E on release). The first
+  step of a run and the step that brings the track back in are not judged: they set the phase.
+  A skipped skill/burst/swap while the track plays is a miss.
+- `TrackPlayer.stepStarted` returns the offset in ms (`lapDelta`: nearest repeat of the step's 16th).
+  Input times go through `epochToAudio` (now exported) minus `audio.latencyMs` and
+  `CHAIN_DELAY_MS` (6.5, the limiter look-ahead), and the anchor/re-join use the same correction,
+  so a steady player with any latency is judged around 0. Fixed: the `outputLatency` fallback in
+  `epochToAudio` had the wrong sign.
+- Lost the beat: `LOST_AFTER` (4) misses in a row drop the cues; the next step re-aligns them. This
+  answers the open question "does a miss restart the bar": no, the music keeps going.
+- Judgement sounds (`playJudgement` in `cuelayer.ts`, on the cue bus, `audio.judgeSounds`): perfect a
+  two-note high ping, good one ping, early a high tick, late a low tock, miss a dull low buzz.
+- Calibration: Settings → "Calibrate by tapping along" (`views/CalibrateView.svelte`): 4 count-in
+  clicks + 16 to tap, plain Web Audio (no limiter; judging adds the chain delay), median offset
+  after dropping taps > 120 ms from the first median, ≥ 8 taps. Saved in `audio.latencyMs`
+  (settings = per device), with a manual slider next to it.
+- Results: `RunMetrics.rhythm` (`RhythmMetrics`): counts, mean, spread, best streak, latency used,
+  per-step n/mean/misses. Live grade + counts under the bar progress; Rhythm panel in `RunReport`
+  with the distribution, the average offset (with a hint to recalibrate past ±30 ms) and the steps
+  that were missed or sit ≥ 40 ms off.
+- Verified in the browser with synthetic input (steady presses: all perfect within ±8 ms; a
+  +150 ms Q → late; a −80 ms E → good). Not yet heard: the judgement sounds' balance against the
+  band, and a calibration with real hardware.
 
 ## The idea in one paragraph
 

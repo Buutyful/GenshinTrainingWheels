@@ -3,6 +3,7 @@
   import { setMix } from './lib/mix';
   import Editor from './views/Editor.svelte';
   import Home from './views/Home.svelte';
+  import CalibrateView from './views/CalibrateView.svelte';
   import JamView from './views/JamView.svelte';
   import MetricsView from './views/MetricsView.svelte';
   import SessionView from './views/SessionView.svelte';
@@ -32,6 +33,8 @@
   {#key app.view.id}<MetricsView id={app.view.id} />{/key}
 {:else if app.view.name === 'jam'}
   <JamView />
+{:else if app.view.name === 'calibrate'}
+  <CalibrateView />
 {:else}
   <SettingsView />
 {/if}
