@@ -94,6 +94,8 @@ export class Session {
   private judge: RhythmJudge | null = null;
   private judgeId = 0;
   judged = $state<JudgeSnap | null>(null);
+  /** Start was pressed: input is captured and the run begins on the first valid step. */
+  started = $state(false);
 
   constructor(
     readonly loadout: Loadout,
@@ -141,10 +143,23 @@ export class Session {
     });
   }
 
+  /** Bars of the rhythm track, 0 without one. */
+  get trackBars(): number {
+    return this.player?.arrangement?.bars ?? 0;
+  }
+
+  /** Whether the run really began (a first valid step was played), not just armed. */
+  get begun(): boolean {
+    return this.tracker.startT !== null;
+  }
+
   async start(): Promise<void> {
+    if (this.started) return;
+    this.started = true;
     try {
       await this.audio.unlock();
-      await this.player?.start();
+      // The music waits for the player's first valid step too.
+      await this.player?.start(true);
       this.stopCapture = await startCapture((e) => this.onRaw(e));
     } catch (e) {
       this.error = `Could not start input capture: ${e instanceof Error ? e.message : String(e)}`;

@@ -30,7 +30,8 @@
   let trackSaved = $state(false);
   let trackReplaced = $state(false);
 
-  function begin() {
+  /** A run that is ready but not started: nothing is captured or played until Start. */
+  function prepare() {
     if (!loadout) return;
     report = null;
     trackSaved = false;
@@ -38,15 +39,27 @@
     // Fresh copy: the previous run may have saved a rhythm track or new timings.
     const now = findLoadout(id);
     if (!now) return;
-    const s = new Session($state.snapshot(now), $state.snapshot(app.data.settings), finish, mode);
-    session = s;
-    void s.start();
+    session = new Session($state.snapshot(now), $state.snapshot(app.data.settings), finish, mode);
+  }
+
+  /** Start: capture input; the run itself (clock, music) begins on the first valid step. */
+  function begin() {
+    if (!session) prepare();
+    void session?.start();
   }
 
   function finish() {
-    if (!session) return;
+    if (!session?.started) return;
+    if (!session.begun) {
+      // Stopped before the first step: nothing to report, back to ready.
+      session.stop();
+      prepare();
+      return;
+    }
     const r = session.stop();
     session = null;
+    // Stopped right after the first step: no time passed, nothing worth a report.
+    if (r.summary.durationMs === 0) return prepare();
     if (r.summary.durationMs > 0) trackSaved = recordSession(id, r.summary, r.timings, r.track);
     report = r;
     lastRun = r.summary;
@@ -79,7 +92,7 @@
   }
 
   onMount(() => {
-    if (loadout?.steps.length) begin();
+    if (loadout?.steps.length) prepare();
     else go({ name: 'home' });
   });
 
@@ -98,10 +111,15 @@
   {@const focus = s.status === 'offtrack' ? s.activeSlot : cur.slot}
 
   <header class="bar" data-tauri-drag-region>
-    <button class="danger" onclick={finish}>Stop</button>
+    {#if session.started}
+      <button class="danger" onclick={finish}>Stop</button>
+    {:else}
+      <button class="hide-compact" onclick={() => go({ name: 'home' })}>Back</button>
+      <button class="primary" onclick={begin}>Start</button>
+    {/if}
     <h1 data-tauri-drag-region>{loadout.name}</h1>
     <span class="pill s-{s.status}">
-      {s.status === 'armed' ? 'Ready' : s.status === 'tracking' ? 'Tracking' : s.status === 'done' ? 'Done' : s.offReason === 'idle' ? 'Paused' : 'Off track'}
+      {!session.started ? 'Not started' : s.status === 'armed' ? 'Waiting for first step' : s.status === 'tracking' ? 'Tracking' : s.status === 'done' ? 'Done' : s.offReason === 'idle' ? 'Paused' : 'Off track'}
     </span>
     <div class="spacer" data-tauri-drag-region></div>
     <div class="stats">
@@ -111,7 +129,7 @@
     </div>
     {#if mode === 'rhythm'}
       <span class="pill rhythm" title="Rhythm mode">
-        ♪ {session.hasTrack ? `Rhythm · ${s.music?.bars ?? ''} bar${s.music?.bars === 1 ? '' : 's'}` : 'Recording track'}
+        ♪ {session.hasTrack ? `Rhythm · ${session.trackBars} bar${session.trackBars === 1 ? '' : 's'}` : 'Recording track'}
       </span>
       <select class="hide-compact" value={musicStyle} onchange={(e) => setStyle(e.currentTarget.value as MusicStyle)} aria-label="Music style">
         {#each STYLE_IDS as id (id)}<option value={id}>♪ {STYLES[id].label}</option>{/each}
@@ -128,7 +146,7 @@
     </select>
     {/if}
     <Mixer compactHidden />
-    <button class="hide-compact" onclick={() => session?.restart()}>Restart</button>
+    {#if session.started}<button class="hide-compact" onclick={() => session?.restart()}>Restart</button>{/if}
     {#if isTauri}<button onclick={() => applyCompact(!compact)}>{compact ? 'Expand' : 'Overlay'}</button>{/if}
   </header>
 
@@ -161,8 +179,10 @@
           {/if}
         </div>
         <div class="now-sub">
-          {#if s.status === 'armed'}
-            The clock starts when you do this. Stand on {charName(loadout.characters, cur.slot)} first.
+          {#if !session.started}
+            Press Start, then play. The run begins on your first {stepLabel(cur.action, cur.count)}{cur.action === 'swap' ? '' : ` on ${charName(loadout.characters, cur.slot)}`}; nothing before it counts.
+          {:else if s.status === 'armed'}
+            Waiting for it: the clock{mode === 'rhythm' ? ' and the music start' : ' starts'} when you do this. Stand on {charName(loadout.characters, cur.slot)} first.
           {:else if next}
             then {next.action === 'swap' ? `swap to ${charName(loadout.characters, next.slot)}` : stepLabel(next.action, next.count)}
           {/if}
@@ -220,6 +240,7 @@
         <div class="feed-item t-{f.tone}">{f.text}</div>
       {:else}
         <div class="muted">
+          {#if !session.started}Press Start when you are ready.{/if}
           {isTauri ? 'Switch to the game and play your rotation.' : 'Click this page, then play the rotation on your keyboard and mouse.'}
           {prettyCode(keys.hkRestart[0] ?? '')} restarts, {prettyCode(keys.hkStop[0] ?? '')} stops.
         </div>

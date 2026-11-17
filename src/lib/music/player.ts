@@ -123,8 +123,11 @@ export class TrackPlayer {
     return this.offset !== null;
   }
 
-  /** Must run from a user gesture (Start). The band plays until the first input re-phases it. */
-  async start(): Promise<void> {
+  /**
+   * Must run from a user gesture (Start). The band plays until the first input re-phases it, or
+   * with `waitForPlayer` stays silent until that first input starts it.
+   */
+  async start(waitForPlayer = false): Promise<void> {
     if (!this.ctx) {
       // A plain browser context: Tone's default wrapper (standardized-audio-context) doubles the CPU cost.
       const ctx = new Tone.Context(new AudioContext({ latencyHint: 'interactive' }));
@@ -139,7 +142,7 @@ export class TrackPlayer {
       await this.rig.band.ready;
     }
     if (this.ctx.state !== 'running') await this.ctx.resume();
-    if (!this.sched!.running) this.sched!.begin();
+    if (!this.sched!.running && !waitForPlayer) this.sched!.begin();
   }
 
   stop(): void {
