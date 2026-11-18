@@ -1,6 +1,7 @@
 <script lang="ts">
   import Mixer from '../components/Mixer.svelte';
   import Avatar from '../components/Avatar.svelte';
+  import Ladder from '../components/Ladder.svelte';
   import RunReport from '../components/RunReport.svelte';
   import TrendChart from '../components/TrendChart.svelte';
   import { findLoadout, go } from '../lib/app.svelte';
@@ -43,8 +44,11 @@
 </header>
 
 <main class="page narrow">
-  {#if !loadout || !history.length}
+  {#if !loadout}
+    <div class="empty"><h2>Loadout not found</h2></div>
+  {:else if !history.length}
     <div class="empty"><h2>No runs yet</h2><p>Metrics appear after the first practice run.</p></div>
+    <Ladder {id} />
   {:else}
     <div class="tiles">
       <div class="tile"><b>{history.length}</b><span>runs</span></div>
@@ -53,6 +57,8 @@
       <div class="tile"><b>{secs(totals.best)}</b><span>best clean lap ever</span></div>
       <div class="tile"><b>{pct(recentAcc)}</b><span>accuracy, last {recent.length} runs</span></div>
     </div>
+
+    <Ladder {id} />
 
     {#if fieldAll > 0}
       <section class="panel">

@@ -115,6 +115,26 @@ export interface Loadout {
   timings?: Timings;
   /** Rhythm-mode backing track, built from one of the player's clean laps. */
   track?: RhythmTrack;
+  /** Friends' results imported for this exact rotation; the player's own come from `history`. */
+  ladder?: LadderEntry[];
+}
+
+/** One player's best run on a loadout, as shared in a result code. */
+export interface LadderEntry {
+  player: string;
+  /** Rotation and team the run was played on (`ladderKey`), set when the entry is imported. */
+  key?: string;
+  /** When the run was played. */
+  date: number;
+  mode: 'practice' | 'rhythm';
+  bestLapMs: number | null;
+  avgLapMs: number | null;
+  accuracy: number;
+  cleanLaps: number;
+  laps: number;
+  durationMs: number;
+  /** Rhythm runs: share of steps on the beat. */
+  onBeat?: number | null;
 }
 
 /**
@@ -226,6 +246,8 @@ export interface Settings {
   tracker: TrackerSettings;
   audio: AudioSettings;
   music: MusicSettings;
+  /** Name shown on friends' ladders when sharing a result. */
+  playerName?: string;
 }
 
 export type MusicStyle = 'runway' | 'hiphop' | 'funk' | 'house' | 'rock';

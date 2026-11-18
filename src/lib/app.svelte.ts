@@ -2,6 +2,7 @@ import { defaultData, exampleLoadout, migrate, newId, newLoadout } from './defau
 import { exportJson, formatGcsim, formatNotation } from './formats';
 import { backupData, isElevated, loadData, saveData } from './platform';
 import { flatten } from './engine';
+import { decodeResult, ladderKey, loadoutFromResult, mergeEntry, sameLoadout } from './ladder';
 import { validTrack } from './music/arrange';
 import type { SessionMode } from './session.svelte';
 import { timingSig } from './timing';
@@ -64,7 +65,7 @@ export function saveLoadout(l: Loadout): void {
 export function duplicateLoadout(id: string): void {
   const src = findLoadout(id);
   if (!src) return;
-  const copy: Loadout = { ...$state.snapshot(src), id: newId(), name: `${src.name} (copy)`, history: [] };
+  const copy: Loadout = { ...$state.snapshot(src), id: newId(), name: `${src.name} (copy)`, history: [], ladder: [] };
   app.data.loadouts.splice(app.data.loadouts.indexOf(src) + 1, 0, copy);
 }
 
@@ -92,6 +93,51 @@ export function recordSession(id: string, summary: SessionSummary, timings: Timi
     return true;
   }
   return false;
+}
+
+export type ImportResultOutcome =
+  | { kind: 'added' | 'improved' | 'kept'; loadoutId: string; loadoutName: string; player: string }
+  | { kind: 'created'; loadoutId: string; loadoutName: string; player: string }
+  | { kind: 'own' | 'mismatch' | 'error'; message: string };
+
+/**
+ * Puts a friend's result code on the ladder of the matching loadout. Without `onlyId` a code
+ * for a loadout the player does not have creates it; with `onlyId` it must match that loadout.
+ */
+export function importResult(code: string, onlyId?: string): ImportResultOutcome {
+  const { result, error } = decodeResult(code);
+  if (!result) return { kind: 'error', message: error ?? 'The code cannot be read.' };
+  const me = (app.data.settings.playerName ?? '').trim().toLowerCase();
+  if (me && result.entry.player.toLowerCase() === me) {
+    return { kind: 'own', message: 'This is your own result: your runs are on the ladder already.' };
+  }
+  const candidates = onlyId ? app.data.loadouts.filter((l) => l.id === onlyId) : app.data.loadouts;
+  const target = candidates.find((l) => sameLoadout(result.loadout, l));
+  if (!target) {
+    if (onlyId) {
+      return {
+        kind: 'mismatch',
+        message: `This result is for “${result.loadout.name}”, which is not the same rotation and team as this loadout. Paste it in Import on the home screen instead.`,
+      };
+    }
+    const l = loadoutFromResult(result);
+    app.data.loadouts.push(l);
+    return { kind: 'created', loadoutId: l.id, loadoutName: l.name, player: result.entry.player };
+  }
+  // Entries left from before the loadout was edited no longer count; drop them on the way.
+  const key = ladderKey(target);
+  const merged = mergeEntry((target.ladder ?? []).filter((e) => e.key === key), { ...result.entry, key });
+  target.ladder = merged.ladder;
+  return { kind: merged.outcome, loadoutId: target.id, loadoutName: target.name, player: result.entry.player };
+}
+
+export function removeLadderEntry(id: string, player: string): void {
+  const l = findLoadout(id);
+  if (l?.ladder) l.ladder = l.ladder.filter((e) => e.player !== player);
+}
+
+export function setPlayerName(name: string): void {
+  app.data.settings.playerName = name.trim().slice(0, 32);
 }
 
 /** Sets the note on a loadout step (the first action of a character turn); empty clears it. */

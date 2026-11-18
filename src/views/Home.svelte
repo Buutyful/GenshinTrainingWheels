@@ -3,7 +3,8 @@
   import Avatar from '../components/Avatar.svelte';
   import Track from '../components/Track.svelte';
   import { onDestroy } from 'svelte';
-  import { addImported, app, createLoadout, currentTrack, deleteLoadout, duplicateLoadout, exportLoadout, go, type ExportFormat } from '../lib/app.svelte';
+  import { addImported, app, createLoadout, currentTrack, deleteLoadout, duplicateLoadout, exportLoadout, go, importResult, type ExportFormat } from '../lib/app.svelte';
+  import { decodeResult, looksLikeResult, sameLoadout } from '../lib/ladder';
   import { arrange } from '../lib/music/arrange';
   import { TrackPlayer } from '../lib/music/player';
   import type { Loadout } from '../lib/types';
@@ -25,7 +26,24 @@
     { id: 'json', label: 'Full loadout', hint: 'Everything, for importing into Genshin Training Wheels on another PC.' },
   ];
 
-  const preview = $derived(dialog?.mode === 'import' && dialog.text.trim() ? importAny(dialog.text) : null);
+  const isResult = $derived(dialog?.mode === 'import' && looksLikeResult(dialog.text));
+  const preview = $derived(dialog?.mode === 'import' && dialog.text.trim() && !isResult ? importAny(dialog.text) : null);
+  /** A friend's result code pasted into Import: goes on a ladder rather than becoming a loadout to edit. */
+  const shared = $derived(isResult && dialog?.mode === 'import' ? decodeResult(dialog.text) : null);
+  const sharedTarget = $derived(shared?.result ? app.data.loadouts.find((l) => sameLoadout(shared.result!.loadout, l)) : undefined);
+  let resultError = $state<string | null>(null);
+
+  function doImportResult() {
+    if (dialog?.mode !== 'import') return;
+    const r = importResult(dialog.text);
+    if ('message' in r) {
+      resultError = r.message;
+      return;
+    }
+    dialog = null;
+    resultError = null;
+    go({ name: 'metrics', id: r.loadoutId });
+  }
   const exported = $derived(dialog?.mode === 'export' ? exportLoadout(dialog.id, dialog.format) : '');
 
   // Preview of a loadout's rhythm track.
@@ -217,6 +235,25 @@
           </label>
           <span class="muted small">A Genshin Optimizer .json, a gcsim config, or a loadout exported from this app.</span>
         </div>
+        {#if shared}
+          <div class="import-preview">
+            <span class="muted small">Read as <b>a friend's result</b></span>
+            {#if shared.result}
+              {@const r = shared.result}
+              <p>
+                <b>{r.entry.player}</b>: {secs(r.entry.bestLapMs)} best clean lap, {pct(r.entry.accuracy)} accuracy, {r.entry.cleanLaps}/{r.entry.laps} clean laps
+                on <b>{r.loadout.name}</b>.
+              </p>
+              <Track steps={flatten(r.loadout.steps, r.loadout.loop, r.loadout.loopStart ?? 0)} characters={r.loadout.characters} compact />
+              <span class="muted small">
+                {sharedTarget ? `It goes on the ladder of your loadout “${sharedTarget.name}”.` : 'You do not have this loadout yet: it will be added, with this result on its ladder.'}
+              </span>
+            {:else}
+              <p class="error small">{shared.error}</p>
+            {/if}
+            {#if resultError}<p class="error small">{resultError}</p>{/if}
+          </div>
+        {/if}
         {#if preview}
           <div class="import-preview">
             <span class="muted small">Read as <b>{preview.format}</b></span>
@@ -234,7 +271,11 @@
         {/if}
         <div class="row end">
           <button onclick={() => (dialog = null)}>Cancel</button>
-          <button class="primary" disabled={!preview?.loadout} onclick={doImport}>Import and review</button>
+          {#if isResult}
+            <button class="primary" disabled={!shared?.result} onclick={doImportResult}>{sharedTarget ? 'Add to ladder' : 'Add loadout and ladder'}</button>
+          {:else}
+            <button class="primary" disabled={!preview?.loadout} onclick={doImport}>Import and review</button>
+          {/if}
         </div>
       {/if}
     </div>
