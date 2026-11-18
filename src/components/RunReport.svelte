@@ -267,33 +267,27 @@
   <!-- Characters -->
   <section class="panel">
     <h2>Team</h2>
-    {#if fieldTotal > 0}
-      <div class="share" role="img" aria-label="Field time by character">
-        {#each m.chars as c, i (i)}
-          {#if c.fieldMs > 0}
-            <div class="seg el-{loadout.characters[i]?.element ?? 'none'}" style:flex-grow={c.fieldMs} title="{names[i]}: {pct(c.fieldMs / fieldTotal)}">
-              {#if c.fieldMs / fieldTotal >= 0.12}<span>{pct(c.fieldMs / fieldTotal)}</span>{/if}
-            </div>
-          {/if}
-        {/each}
-      </div>
-      <p class="muted small share-cap">Share of field time</p>
-    {/if}
     <div class="team">
+      <div class="team-cols muted small" aria-hidden="true">
+        <span></span><span>Field time</span><span>Inputs</span><span class="r">Right</span>
+      </div>
       {#each m.chars as c, i (i)}
         {@const judged = c.hits + c.missed + c.wrong}
         {@const acc = judged ? c.hits / judged : null}
+        {@const share = fieldTotal ? c.fieldMs / fieldTotal : 0}
         <div class="mate el-{loadout.characters[i]?.element ?? 'none'}">
-          <div class="member-head">
-            <Avatar character={loadout.characters[i]} size={40} slot={i + 1} />
+          <div class="who">
+            <Avatar character={loadout.characters[i]} size={38} slot={i + 1} />
             <div class="member-name">
               <b>{names[i]}</b>
-              <span class="muted small">{clock(c.fieldMs)} · {c.entries}× on field</span>
+              <span class="muted small">
+                {c.entries}× on field{#if c.missed}{' · '}{c.missed} skipped{/if}{#if c.wrong}{' · '}{c.wrong} wrong{/if}
+              </span>
             </div>
-            <div class="member-acc tone-{acc === null ? 'none' : acc >= 0.9 ? 'good' : acc >= 0.75 ? 'ok' : 'bad'}">
-              {@render ring(acc, 44, 5, '')}
-              <span>{acc === null ? '—' : Math.round(acc * 100)}</span>
-            </div>
+          </div>
+          <div class="field">
+            <div class="field-track"><div class="field-fill" style:width="{share * 100}%"></div></div>
+            <span class="field-val"><b>{pct(share)}</b> <span class="muted">{clock(c.fieldMs)}</span></span>
           </div>
           <div class="acts">
             {#each ACTS as a (a.a)}
@@ -301,9 +295,10 @@
             {/each}
             {#if !Object.values(c.actions).some(Boolean)}<span class="muted small">no inputs</span>{/if}
           </div>
-          {#if c.missed || c.wrong}
-            <div class="muted small">{c.missed ? `${c.missed} skipped` : ''}{c.missed && c.wrong ? ' · ' : ''}{c.wrong ? `${c.wrong} wrong` : ''}</div>
-          {/if}
+          <div class="member-acc tone-{acc === null ? 'none' : acc >= 0.9 ? 'good' : acc >= 0.75 ? 'ok' : 'bad'}">
+            {@render ring(acc, 40, 4, '')}
+            <span>{acc === null ? '—' : Math.round(acc * 100)}</span>
+          </div>
         </div>
       {/each}
     </div>
@@ -469,11 +464,9 @@
     padding: 6px 8px 6px 6px;
     border-radius: 10px;
     background: var(--panel-2);
-    border-top: 2px solid var(--el);
   }
   .turn.opener {
-    opacity: 0.85;
-    border-top-style: dashed;
+    opacity: 0.8;
   }
   .turn > :global(.avatar) {
     margin-top: 2px;
@@ -657,44 +650,56 @@
   }
 
   /* Team */
-  .share {
-    display: flex;
-    gap: 2px;
-    height: 22px;
-    border-radius: 7px;
-    overflow: hidden;
-  }
-  .share .seg {
-    background: var(--el);
-    min-width: 2px;
-    display: grid;
-    place-items: center;
-    color: #10131b;
-    font-size: 11.5px;
-    font-weight: 700;
-  }
-  .share-cap {
-    margin-top: -6px;
-  }
   .team {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-  .mate {
-    background: var(--panel-2);
-    border-radius: 10px;
-    border-left: 3px solid var(--el);
-    padding: 10px 12px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    min-width: 0;
   }
-  .member-head {
+  .team-cols,
+  .mate {
+    display: grid;
+    grid-template-columns: minmax(170px, 1.2fr) minmax(130px, 1fr) minmax(0, 1.4fr) 40px;
+    gap: 16px;
+    align-items: center;
+  }
+  .team-cols {
+    padding-bottom: 6px;
+    border-bottom: 1px solid #20242f;
+  }
+  .team-cols .r {
+    text-align: right;
+  }
+  .mate {
+    padding: 10px 0;
+    border-bottom: 1px solid #20242f;
+  }
+  .mate:last-child {
+    border-bottom: 0;
+  }
+  .who {
     display: flex;
     align-items: center;
     gap: 10px;
+    min-width: 0;
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .field-track {
+    height: 8px;
+    border-radius: 99px;
+    background: var(--panel-2);
+    overflow: hidden;
+  }
+  .field-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: var(--el);
+  }
+  .field-val {
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
   }
   .member-name {
     flex: 1;
@@ -709,8 +714,8 @@
   }
   .member-acc {
     position: relative;
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
     flex: none;
   }
   .member-acc span {
@@ -739,7 +744,7 @@
   .act {
     padding: 2px 7px;
     border-radius: 6px;
-    background: var(--panel);
+    background: var(--panel-2);
     font-size: 12px;
     color: var(--muted);
   }
@@ -753,8 +758,20 @@
       flex-direction: column;
       align-items: flex-start;
     }
-    .team {
-      grid-template-columns: 1fr;
+    .team-cols {
+      display: none;
+    }
+    .mate {
+      grid-template-columns: 1fr 40px;
+      gap: 8px 12px;
+    }
+    .mate .field,
+    .mate .acts {
+      grid-column: 1 / -1;
+    }
+    .mate .member-acc {
+      grid-row: 1;
+      grid-column: 2;
     }
   }
 </style>
