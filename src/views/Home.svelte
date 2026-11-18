@@ -165,7 +165,7 @@
             <button class="primary" disabled={!l.steps.length} title="Audio cues guide you and wait for you" onclick={() => go({ name: 'session', id: l.id, mode: 'practice' })}>Practice</button>
             <button class="rhythm" disabled={!l.steps.length} title="Play over a backing track made from your own clean lap" onclick={() => { stopListening(); go({ name: 'session', id: l.id, mode: 'rhythm' }); }}>♪ Rhythm</button>
             <button onclick={() => go({ name: 'edit', id: l.id })}>Edit</button>
-            <button disabled={!l.history.length} onclick={() => go({ name: 'metrics', id: l.id })}>Metrics</button>
+            <button disabled={!l.history.length && !l.ladder?.length} onclick={() => go({ name: 'metrics', id: l.id })}>Metrics</button>
             <div class="spacer"></div>
             {#if confirming === l.id}
               <span class="muted small">Delete?</span>
