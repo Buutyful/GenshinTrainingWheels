@@ -92,7 +92,11 @@
     const r = parseRotation(text, draft.characters);
     textErrors = r.errors;
     if (r.errors.length) return;
-    draft.steps = r.steps;
+    // Notes are not part of the text; keep each on the step that is still the same action.
+    const old = draft.steps;
+    draft.steps = r.steps.map((s, i) =>
+      old[i]?.note && old[i].slot === s.slot && old[i].action === s.action ? { ...s, note: old[i].note } : s,
+    );
     draft.loopStart = r.loopStart;
     // Names typed that were not in the team fill its empty slots.
     r.characters.forEach((c, i) => {

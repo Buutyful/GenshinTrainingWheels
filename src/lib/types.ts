@@ -20,6 +20,8 @@ export interface RotationStep {
   action: StepAction;
   /** Number of normal attacks, only meaningful for `na`. */
   count?: number;
+  /** Player's note on the character turn this step starts (buffs, cooldowns, what it sets up). */
+  note?: string;
 }
 
 /** What one character did during a run. */
@@ -53,7 +55,18 @@ export interface RunMetrics {
   swaps: number;
   inputs: number;
   /** Per flattened step, so the metrics view can say which steps keep going wrong. */
-  steps: { sig: string; missed: number[]; wrong: number[] };
+  steps: {
+    sig: string;
+    missed: number[];
+    wrong: number[];
+    /**
+     * Average time from the previous step's input (or the lap's start) to this step's, over laps
+     * that were not abandoned; 0 where never measured. Absent on runs recorded before it existed.
+     */
+    durMs?: number[];
+    /** Laps each `durMs` entry was averaged over. */
+    durN?: number[];
+  };
   /** Rhythm mode only. */
   rhythm?: RhythmMetrics;
 }

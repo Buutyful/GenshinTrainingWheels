@@ -94,6 +94,15 @@ export function recordSession(id: string, summary: SessionSummary, timings: Timi
   return false;
 }
 
+/** Sets the note on a loadout step (the first action of a character turn); empty clears it. */
+export function setStepNote(id: string, step: number, note: string): void {
+  const s = findLoadout(id)?.steps[step];
+  if (!s) return;
+  const text = note.trim();
+  if (text) s.note = text;
+  else delete s.note;
+}
+
 export function setTrack(id: string, track: RhythmTrack | null): void {
   const l = findLoadout(id);
   if (!l) return;

@@ -1,6 +1,7 @@
 // Turns a run's numbers into a verdict and a short list of things to work on next. Pure, so the
 // wording rules are tested without the UI.
 
+import type { TurnRow } from './breakdown';
 import type { FlatStep } from './engine';
 import { onBeat } from './rhythm';
 import type { SessionSummary } from './types';
@@ -34,6 +35,8 @@ export interface CoachInput {
   sameRotation: boolean;
   /** Human description of a flattened step, e.g. "Xingqiu's Q". */
   describe: (i: number) => string;
+  /** Character turns with planned and measured times, when known. */
+  turns?: TurnRow[];
 }
 
 const toneOf = (v: number | null): Tone => (v === null ? 'ok' : v >= 0.9 ? 'good' : v >= 0.75 ? 'ok' : 'bad');
@@ -41,7 +44,7 @@ const s1 = (ms: number) => `${(Math.abs(ms) / 1000).toFixed(1)}s`;
 const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
 const msWord = (x: number) => `${Math.abs(Math.round(x))} ms ${x < 0 ? 'early' : 'late'}`;
 
-export function coach({ run, steps, names, sameRotation, describe }: CoachInput): Verdict {
+export function coach({ run, steps, names, sameRotation, describe, turns }: CoachInput): Verdict {
   const m = run.metrics;
   const rh = m?.rhythm ?? null;
   const beat = rh ? onBeat(rh.counts) : null;
@@ -124,6 +127,20 @@ export function coach({ run, steps, names, sameRotation, describe }: CoachInput)
         run.accuracy >= 0.9
           ? 'Inputs are right, so the time is lost between them: swap the moment an animation can be cancelled.'
           : 'Get the order clean first; speed comes once the inputs stop going wrong.',
+    });
+  }
+
+  // 3b. The turn that loses the most time against the plan.
+  const longest = (turns ?? [])
+    .filter((t) => t.actualMs !== null)
+    .map((t) => ({ t, over: t.actualMs! - t.planMs }))
+    .sort((a, b) => b.over - a.over)[0];
+  if (longest && longest.over >= 600 && longest.over >= longest.t.planMs * 0.25) {
+    tips.push({
+      kind: 'fix',
+      title: `${names[longest.t.slot]}'s turn runs ${s1(longest.over)} long`,
+      detail: `It takes ${s1(longest.t.actualMs!)} against ${s1(longest.t.planMs)} planned: the biggest time sink in the rotation.`,
+      step: longest.t.items.find((x) => x.s.action !== 'swap')?.i,
     });
   }
 

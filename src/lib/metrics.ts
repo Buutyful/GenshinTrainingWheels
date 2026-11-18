@@ -17,13 +17,21 @@ export class MetricsCollector {
   inputs = 0;
   private lastT: number | null = null;
   private onField: Slot | null = null;
+  /** Step durations: time of the previous input in this lap, this lap's samples, and the totals. */
+  private prevHitT: number | null = null;
+  private pending = new Map<number, number>();
+  private durSum: number[];
+  private durN: number[];
 
   constructor(
     private steps: FlatStep[],
     private tracker: Tracker,
     private sig: string,
     private targetMs: number | null,
-  ) {}
+  ) {
+    this.durSum = steps.map(() => 0);
+    this.durN = steps.map(() => 0);
+  }
 
   /** Credits the time since the last call to whoever was on field. Call before every event. */
   accrue(t: number, active: Slot): void {
@@ -60,9 +68,14 @@ export class MetricsCollector {
     switch (e.kind) {
       case 'start':
         this.lastT = e.t;
+        // The run starts on its first input, so that step has no measurable duration.
+        this.prevHitT = null;
+        this.pending.clear();
         this.chars[this.steps[this.tracker.pointer]?.slot ?? 0].entries++;
         return;
       case 'hit':
+        if (this.prevHitT !== null) this.pending.set(e.index, e.t - this.prevHitT);
+        this.prevHitT = e.t;
         if (!isNoise(this.steps[e.index].action)) this.chars[this.steps[e.index].slot].hits++;
         return;
       case 'skip':
@@ -71,6 +84,26 @@ export class MetricsCollector {
         return;
       case 'wrong':
         this.chars[e.action.slot].wrong++;
+        return;
+      case 'lap': {
+        // Only laps played through count; an abandoned one would skew every step after the break.
+        const rec = this.tracker.laps[this.tracker.laps.length - 1];
+        if (rec && !rec.aborted) {
+          for (const [i, d] of this.pending) {
+            this.durSum[i] += d;
+            this.durN[i]++;
+          }
+        }
+        this.pending.clear();
+        this.prevHitT = e.t;
+        return;
+      }
+      case 'offtrack':
+        this.pending.clear();
+        this.prevHitT = null;
+        return;
+      case 'resync':
+        this.prevHitT = e.t;
         return;
     }
   }
@@ -86,7 +119,13 @@ export class MetricsCollector {
       pausedMs: this.pausedMs,
       swaps: this.swaps,
       inputs: this.inputs,
-      steps: { sig: this.sig, missed: tr.stats.map((s) => s.missed), wrong: tr.stats.map((s) => s.wrongAt) },
+      steps: {
+        sig: this.sig,
+        missed: tr.stats.map((s) => s.missed),
+        wrong: tr.stats.map((s) => s.wrongAt),
+        durMs: this.durSum.map((s, i) => (this.durN[i] ? Math.round(s / this.durN[i]) : 0)),
+        durN: [...this.durN],
+      },
     };
   }
 }

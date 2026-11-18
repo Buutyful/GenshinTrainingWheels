@@ -1,10 +1,12 @@
 <script lang="ts">
+  import { setStepNote } from '../lib/app.svelte';
+  import { breakdown, type TurnRow } from '../lib/breakdown';
   import { coach } from '../lib/coach';
-  import { flatten, type FlatStep } from '../lib/engine';
+  import { flatten } from '../lib/engine';
   import { clock, pct, secs } from '../lib/format';
   import { charName, stepLabel } from '../lib/notation';
   import { GRADE_LABEL, GRADES, grade, WINDOWS } from '../lib/rhythm';
-  import { timingSig } from '../lib/timing';
+  import { resolveTimings, timingSig } from '../lib/timing';
   import { isNoise } from '../lib/types';
   import type { Loadout, SessionSummary, Slot, StepAction } from '../lib/types';
   import Avatar from './Avatar.svelte';
@@ -23,8 +25,6 @@
     const s = steps[i];
     return s.action === 'swap' ? `the swap to ${names[s.slot]}` : `${names[s.slot]}'s ${stepLabel(s.action, s.count)}`;
   };
-  const verdict = $derived(coach({ run, steps, names, sameRotation, describe }));
-  const focusStep = $derived(verdict.tips.find((t) => t.step !== undefined)?.step ?? null);
 
   const ACTS: { a: StepAction; label: string }[] = [
     { a: 'skill', label: 'E' },
@@ -51,21 +51,54 @@
   const heat = (e: number) => (e === 0 ? 0 : e / maxErr > 0.66 ? 3 : e / maxErr > 0.33 ? 2 : 1);
   const loopAt = $derived(steps.findIndex((s) => s.loopEntry));
 
-  interface Turn {
-    block: number;
-    slot: Slot;
-    opener: boolean;
-    items: { s: FlatStep; i: number }[];
-  }
-  const turns = $derived.by(() => {
-    const out: Turn[] = [];
-    steps.forEach((s, i) => {
-      const last = out[out.length - 1];
-      if (last && last.block === s.block) last.items.push({ s, i });
-      else out.push({ block: s.block, slot: s.slot, opener: loopAt > 0 && i < loopAt, items: [{ s, i }] });
-    });
+  // ---- Rotation breakdown: one row per character turn.
+  const sig = $derived(timingSig(loadout.steps, loadout.loop, ls));
+  const bd = $derived(
+    breakdown(
+      steps,
+      loadout.loop,
+      resolveTimings(loadout.timings, steps, sig),
+      loadout.rotationSec ? loadout.rotationSec * 1000 : null,
+      sameRotation ? m?.steps.durMs : undefined,
+      sameRotation ? m?.steps.durN : undefined,
+    ),
+  );
+  const stamp = (ms: number) => {
+    const s = ms / 1000;
+    return `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`;
+  };
+  const verdict = $derived(coach({ run, steps, names, sameRotation, describe, turns: bd.rows }));
+  const focusStep = $derived(verdict.tips.find((t) => t.step !== undefined)?.step ?? null);
+  /** Time over the plan that is worth pointing out. */
+  const slow = (r: TurnRow) => (r.actualMs !== null && r.actualMs - r.planMs > Math.max(300, r.planMs * 0.15) ? r.actualMs - r.planMs : 0);
+
+  /** What went wrong in a turn this run, in a few words per step. */
+  const turnIssues = (r: TurnRow) => {
+    const out: { text: string; bad: boolean }[] = [];
+    for (const { s, i } of r.items) {
+      const label = s.action === 'swap' ? 'swap' : stepLabel(s.action, s.count);
+      const missed = m?.steps.missed[i] ?? 0;
+      const wrong = m?.steps.wrong[i] ?? 0;
+      if (missed) out.push({ text: `${label} skipped ${missed}×`, bad: true });
+      if (wrong) out.push({ text: `${wrong}× wrong input at ${label === 'swap' ? 'the swap' : label}`, bad: true });
+      if (rhSteps && (rhSteps.n[i] ?? 0) >= 2 && Math.abs(rhSteps.meanMs[i]) >= 40)
+        out.push({ text: `${label} ${msWord(rhSteps.meanMs[i])}`, bad: false });
+    }
+    const late = slow(r);
+    if (late) out.push({ text: `${(late / 1000).toFixed(1)}s over plan`, bad: false });
     return out;
+  };
+
+  // Player notes per turn, kept on the loadout's first step of the turn.
+  let notes = $state<Record<number, string>>({});
+  $effect.pre(() => {
+    notes = Object.fromEntries(loadout.steps.map((s, i) => [i, s.note ?? '']));
   });
+  const saveNote = (step: number, text: string) => {
+    notes[step] = text;
+    loadout.steps[step].note = text.trim() || undefined;
+    setStepNote(loadout.id, step, text);
+  };
 
   const stepTip = (i: number) => {
     const missed = m?.steps.missed[i] ?? 0;
@@ -174,35 +207,77 @@
     </ol>
   </section>
 
-  <!-- Rotation map -->
+  <!-- Rotation breakdown -->
   <section class="panel">
     <div class="head-row">
-      <h2>Where in the rotation</h2>
+      <h2>Rotation breakdown</h2>
       {#if sameRotation}<span class="muted small">{totalErr ? `${totalErr} mistake${totalErr === 1 ? '' : 's'}` : 'no mistakes'}</span>{/if}
     </div>
     {#if !sameRotation}
       <p class="muted">The rotation has changed since this run, so its steps can't be mapped any more.</p>
     {:else}
-      <div class="map">
-        {#each turns as turn, ti (ti)}
-          {#if loopAt > 0 && ti === 0}<span class="part-label">Opener</span>{/if}
-          {#if loopAt > 0 && turn.items[0].i === loopAt}<span class="part-label loop">Loop ↻</span>{/if}
-          <div class="turn el-{loadout.characters[turn.slot]?.element ?? 'none'}" class:opener={turn.opener}>
-            <Avatar character={loadout.characters[turn.slot]} size={26} />
-            {#each turn.items as { s, i } (i)}
-              <div class="cell" class:focus={focusStep === i} title={stepTip(i)}>
-                <span class="chip heat-{heat(errs[i])}" class:swap={s.action === 'swap'} class:noise={isNoise(s.action)}>
-                  {s.action === 'swap' ? '⇄' : stepLabel(s.action, s.count)}
-                  {#if errs[i]}<i class="badge">{errs[i]}</i>{/if}
-                </span>
-                {#if rhSteps && (rhSteps.n[i] ?? 0) > 0}
-                  {@const mean = rhSteps.meanMs[i]}
-                  <span class="mini g-{grade(mean, isNoise(s.action))}" aria-hidden="true">
-                    <i style:left="{50 + (Math.max(-RANGE, Math.min(RANGE, mean)) / RANGE) * 50}%"></i>
+      <div class="bd" role="table" aria-label="Rotation breakdown by character turn">
+        <div class="bd-row bd-head muted small" role="row">
+          <span role="columnheader">Time</span>
+          <span role="columnheader">Character</span>
+          <span role="columnheader">Actions</span>
+          <span role="columnheader" class="r">On field</span>
+        </div>
+        {#each bd.rows as r, ri (ri)}
+          {#if loopAt > 0 && ri === 0}<div class="bd-part" role="row"><span class="part-label">Opener · first rotation only</span></div>{/if}
+          {#if loopAt > 0 && r.items[0].i === loopAt}<div class="bd-part" role="row"><span class="part-label loop">Loop ↻ · every rotation after</span></div>{/if}
+          {@const issues = turnIssues(r)}
+          {@const late = slow(r)}
+          <div class="bd-row el-{loadout.characters[r.slot]?.element ?? 'none'}" class:opener={r.opener} role="row">
+            <span class="bd-time" role="cell">{stamp(r.startMs)} – {stamp(r.endMs)}</span>
+            <span class="bd-who" role="cell">
+              <Avatar character={loadout.characters[r.slot]} size={28} />
+              <b>{names[r.slot]}</b>
+            </span>
+            <span class="bd-acts" role="cell">
+              {#each r.items as { s, i } (i)}
+                <span class="cell" class:focus={focusStep === i} title={stepTip(i)}>
+                  <span class="chip heat-{heat(errs[i])}" class:swap={s.action === 'swap'} class:noise={isNoise(s.action)}>
+                    {s.action === 'swap' ? '⇄' : stepLabel(s.action, s.count)}
+                    {#if errs[i]}<i class="badge">{errs[i]}</i>{/if}
                   </span>
-                {/if}
-              </div>
-            {/each}
+                  {#if rhSteps && (rhSteps.n[i] ?? 0) > 0}
+                    {@const mean = rhSteps.meanMs[i]}
+                    <span class="mini g-{grade(mean, isNoise(s.action))}" aria-hidden="true">
+                      <i style:left="{50 + (Math.max(-RANGE, Math.min(RANGE, mean)) / RANGE) * 50}%"></i>
+                    </span>
+                  {/if}
+                </span>
+              {/each}
+            </span>
+            <span class="bd-field r" role="cell">
+              <b>~{((r.actualMs ?? r.planMs) / 1000).toFixed(1)}s</b>
+              {#if r.actualMs !== null}
+                <small class:late={late > 0} class:early={r.actualMs < r.planMs - 300}>
+                  plan {(r.planMs / 1000).toFixed(1)}s
+                </small>
+              {:else}
+                <small class="muted">planned</small>
+              {/if}
+            </span>
+            <span class="bd-notes" role="cell">
+              {#if issues.length}
+                <span class="issues">
+                  {#each issues as it, k (k)}<span class:bad={it.bad}>{it.text}</span>{/each}
+                </span>
+              {:else if r.actualMs !== null}
+                <span class="clean">✓ clean</span>
+              {/if}
+              {#if r.noteStep >= 0}
+                <textarea
+                  class="note"
+                  rows="1"
+                  placeholder="Add a note: buffs, cooldowns, what this turn sets up…"
+                  value={notes[r.noteStep] ?? ''}
+                  onchange={(e) => saveNote(r.noteStep, e.currentTarget.value)}
+                ></textarea>
+              {/if}
+            </span>
           </div>
         {/each}
       </div>
@@ -212,6 +287,11 @@
         <span><i class="sw heat-3"></i>Most mistakes</span>
         {#if rhSteps}<span><i class="sw mini-sw"></i>Average timing, early ← → late</span>{/if}
       </div>
+      <p class="muted small">
+        {bd.source === 'run' ? 'Times are this run’s average over the laps you played through.' : 'Times are the plan; this run has no step timings yet.'}
+        The plan is {bd.plan === 'target' ? `your own pace scaled to the ${loadout.rotationSec}s rotation time` : 'your usual pace on clean laps; set a rotation time to plan against it'}.
+        Notes are saved with the loadout.
+      </p>
     {/if}
   </section>
 
@@ -448,28 +528,120 @@
     justify-content: space-between;
     gap: 10px;
   }
-  .map {
+  .bd {
+    display: flex;
+    flex-direction: column;
+  }
+  .bd-row {
+    display: grid;
+    grid-template-columns: 104px minmax(120px, 0.8fr) minmax(0, 1.4fr) 76px;
+    grid-template-areas: 'time who acts field' '. notes notes notes';
+    gap: 8px 14px;
+    align-items: start;
+    padding: 12px 0;
+    border-bottom: 1px solid #20242f;
+  }
+  .bd-row:last-child {
+    border-bottom: 0;
+  }
+  .bd-row.opener {
+    opacity: 0.85;
+  }
+  .bd-head {
+    padding: 0 0 8px;
+  }
+  .bd-part {
+    padding: 12px 0 2px;
+  }
+  .r {
+    text-align: right;
+  }
+  .bd-time {
+    grid-area: time;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 12.5px;
+    color: var(--accent);
+    padding-top: 6px;
+    white-space: nowrap;
+  }
+  .bd-who {
+    grid-area: who;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+  }
+  .bd-who b {
+    color: var(--el);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bd-acts {
+    grid-area: acts;
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    align-items: flex-start;
+    gap: 6px;
+    padding-top: 1px;
   }
-  .map .part-label {
-    align-self: center;
-  }
-  .turn {
+  .bd-field {
+    grid-area: field;
     display: flex;
-    align-items: flex-start;
-    gap: 5px;
-    padding: 6px 8px 6px 6px;
-    border-radius: 10px;
+    flex-direction: column;
+    align-items: flex-end;
+    padding-top: 3px;
+    font-variant-numeric: tabular-nums;
+  }
+  .bd-field small {
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+  .bd-notes {
+    grid-area: notes;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    padding-top: 3px;
+  }
+  .issues {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    font-size: 12.5px;
+    color: var(--warn);
+  }
+  .issues .bad {
+    color: var(--bad);
+  }
+  .clean {
+    font-size: 12.5px;
+    color: var(--ok);
+  }
+  .note {
+    width: 100%;
+    resize: none;
+    field-sizing: content;
+    min-height: 30px;
+    padding: 5px 8px;
+    font: inherit;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--text);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+  }
+  .note::placeholder {
+    color: #5d6377;
+  }
+  .note:hover {
+    border-color: var(--line);
+  }
+  .note:focus {
+    outline: none;
+    border-color: var(--accent);
     background: var(--panel-2);
-  }
-  .turn.opener {
-    opacity: 0.8;
-  }
-  .turn > :global(.avatar) {
-    margin-top: 2px;
   }
   .cell {
     display: flex;
@@ -754,6 +926,17 @@
   }
 
   @media (max-width: 560px) {
+    .bd-head {
+      display: none;
+    }
+    .bd-row {
+      grid-template-columns: 1fr auto;
+      grid-template-areas: 'who field' 'time time' 'acts acts' 'notes notes';
+      gap: 6px 12px;
+    }
+    .bd-time {
+      padding-top: 0;
+    }
     .hero {
       flex-direction: column;
       align-items: flex-start;

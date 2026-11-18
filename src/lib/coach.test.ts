@@ -85,3 +85,16 @@ describe('coach', () => {
     expect(v.tips[0].title).toBe('You play 60 ms late');
   });
 });
+
+describe('coach turn timing', () => {
+  it('names the turn that loses the most time', () => {
+    const turns = [
+      { slot: 0 as const, items: [{ s: steps[0], i: 0 }, { s: steps[1], i: 1 }], opener: false, noteStep: 0, startMs: 0, endMs: 0, planMs: 2000, actualMs: 2100 },
+      { slot: 1 as const, items: [{ s: steps[2], i: 2 }, { s: steps[3], i: 3 }], opener: false, noteStep: 1, startMs: 0, endMs: 0, planMs: 2000, actualMs: 3200 },
+    ];
+    const v = coach({ run: run(0.95, { targetMs: null }), steps, names, sameRotation: true, describe: describeStep, turns });
+    const tip = v.tips.find((t) => t.title.includes('turn runs'));
+    expect(tip?.title).toBe("Xingqiu's turn runs 1.2s long");
+    expect(tip?.step).toBe(3);
+  });
+});
