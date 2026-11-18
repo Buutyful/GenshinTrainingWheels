@@ -3,7 +3,7 @@
 
 ## Install
 
-Download `Genshin Training Wheels_…_x64-setup.exe` below and run it. Windows 10/11, 64-bit.
+Download `Genshin.Training.Wheels_…_x64-setup.exe` below and run it. Windows 10/11, 64-bit.
 
 The app is free and **not code-signed**, so Windows does not recognise the publisher:
 
