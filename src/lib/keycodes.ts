@@ -89,3 +89,15 @@ const PRETTY: Record<string, string> = {
 export function prettyCode(code: string): string {
   return PRETTY[code] ?? code.replace(/^Key|^Digit/, '');
 }
+
+/**
+ * Enter starts or stops a run, as the Start / Stop buttons do. Not while typing in a field, and
+ * the default is cancelled so a focused button is not clicked a second time.
+ */
+export function isEnterToggle(e: KeyboardEvent): boolean {
+  if (e.key !== 'Enter' || e.repeat || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return false;
+  const t = e.target as HTMLElement | null;
+  if (t?.closest('input, textarea, select, [contenteditable="true"]')) return false;
+  e.preventDefault();
+  return true;
+}

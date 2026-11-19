@@ -6,7 +6,7 @@
   import Track from '../components/Track.svelte';
   import { app, currentTrack, findLoadout, go, recordSession, setTrack } from '../lib/app.svelte';
   import { clock, pct } from '../lib/format';
-  import { prettyCode } from '../lib/keycodes';
+  import { isEnterToggle, prettyCode } from '../lib/keycodes';
   import { charName, stepLabel } from '../lib/notation';
   import { isTauri } from '../lib/platform';
   import { closePresentation, onPresentationCommand, onPresentationReady, openPresentation, publishPresentation, type PresentationCommand, type PresentationState } from '../lib/presentation';
@@ -135,6 +135,13 @@
     }
   }
 
+  /** Enter starts or stops, like the buttons; on the results page it runs again. */
+  function onKey(e: KeyboardEvent) {
+    if (!isEnterToggle(e)) return;
+    if (session?.started) finish();
+    else begin();
+  }
+
   let stopReady: (() => void) | null = null;
   let stopCommands: (() => void) | null = null;
 
@@ -158,6 +165,8 @@
 
 </script>
 
+<svelte:window onkeydown={onKey} />
+
 {#if session && loadout}
   {@const s = session.snap}
   {@const cur = session.steps[s.pointer]}
@@ -167,10 +176,10 @@
 
   <header class="bar">
     {#if session.started}
-      <button class="danger" onclick={finish}>Stop</button>
+      <button class="danger" onclick={finish} title="Stop (Enter)">Stop<span class="enter-key" aria-hidden="true">⏎</span></button>
     {:else}
       <button onclick={() => go({ name: 'home' })}>Back</button>
-      <button class="primary" onclick={begin}>Start</button>
+      <button class="primary" onclick={begin} title="Start (Enter)">Start<span class="enter-key" aria-hidden="true">⏎</span></button>
     {/if}
     <h1>{loadout.name}</h1>
     <span class="pill s-{s.status}">
@@ -291,7 +300,7 @@
         <div class="feed-item t-{f.tone}">{f.text}</div>
       {:else}
         <div class="muted">
-          {#if !session.started}Press Start when you are ready.{/if}
+          {#if !session.started}Press Start or Enter when you are ready.{/if}
           {isTauri ? 'Switch to the game and play your rotation.' : 'Click this page, then play the rotation on your keyboard and mouse.'}
           {prettyCode(keys.hkRestart[0] ?? '')} restarts, {prettyCode(keys.hkStop[0] ?? '')} stops.
         </div>
@@ -306,7 +315,7 @@
     <div class="spacer"></div>
     <Mixer />
     {#if mode === 'practice'}<button onclick={() => go({ name: 'session', id, mode: 'rhythm' })}>♪ Rhythm</button>{/if}
-    <button class="primary" onclick={begin}>Run again</button>
+    <button class="primary" onclick={begin} title="Run again (Enter)">Run again<span class="enter-key" aria-hidden="true">⏎</span></button>
   </header>
 
   <main class="page narrow">

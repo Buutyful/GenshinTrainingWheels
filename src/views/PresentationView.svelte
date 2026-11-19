@@ -4,6 +4,7 @@
   import { blocksOf } from '../lib/blocks';
   import { clock } from '../lib/format';
   import { stepLabel } from '../lib/notation';
+  import { isEnterToggle } from '../lib/keycodes';
   import { isTauri } from '../lib/platform';
   import { closeOverlay, fitOverlayHeight, followPresentation, presentationSize, sendPresentationCommand, type PresentationState } from '../lib/presentation';
 
@@ -30,6 +31,12 @@
     if (index === current) return 'current';
     const s = st?.statuses?.[index] ?? 'pending';
     return s === 'ok' || s === 'partial' ? 'done' : s;
+  }
+
+  /** Enter starts or stops the run, like the buttons. */
+  function onKey(e: KeyboardEvent) {
+    if (!st || !isEnterToggle(e)) return;
+    void sendPresentationCommand(running ? 'stop' : 'start');
   }
 
   /** The window has no title bar: dragging the panel moves it. */
@@ -74,6 +81,8 @@
   });
 </script>
 
+<svelte:window onkeydown={onKey} />
+
 <div class="frame" class:green={prefs?.background === 'green'} style:--s={prefs?.scale ?? 1}>
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="ov-panel" class:vertical={prefs?.layout === 'vertical'} bind:this={panel} onmousedown={drag}>
@@ -86,9 +95,9 @@
       <span class="spacer"></span>
       {#if st}
         {#if running}
-          <button class="danger" onclick={() => sendPresentationCommand('stop')}>Stop</button>
+          <button class="danger" title="Stop (Enter)" onclick={() => sendPresentationCommand('stop')}>Stop<span class="enter-key" aria-hidden="true">⏎</span></button>
         {:else}
-          <button class="primary" onclick={() => sendPresentationCommand('start')}>Start</button>
+          <button class="primary" title="Start (Enter)" onclick={() => sendPresentationCommand('start')}>Start<span class="enter-key" aria-hidden="true">⏎</span></button>
         {/if}
       {/if}
       <button class="ghost close" title="Close the overlay" aria-label="Close the overlay" onclick={closeOverlay}>
