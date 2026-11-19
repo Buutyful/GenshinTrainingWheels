@@ -18,6 +18,10 @@ export interface TurnRow {
   planMs: number;
   /** Measured this run; null when none of its steps were. */
   actualMs: number | null;
+  /** Time each item takes on the timeline, aligned with `items`; sums to `endMs - startMs`. */
+  stepMs: number[];
+  /** The tail of each `stepMs` spent on the step's own attack string; the rest is the wait before it. */
+  actMs: number[];
 }
 
 export interface Breakdown {
@@ -74,6 +78,8 @@ export function breakdown(
         endMs: 0,
         planMs: 0,
         actualMs: null,
+        stepMs: [],
+        actMs: [],
       });
   });
 
@@ -88,6 +94,8 @@ export function breakdown(
     r.planMs = r.items.reduce((a, x) => a + plan[x.i], 0);
     const got = r.items.filter((x) => measured(x.i));
     r.actualMs = got.length ? r.items.reduce((a, x) => a + (measured(x.i) ? durMs![x.i] : plan[x.i]), 0) : null;
+    r.stepMs = r.items.map((x) => (r.actualMs !== null && measured(x.i) ? durMs![x.i] : plan[x.i]));
+    r.actMs = r.items.map((x, k) => (raw[x.i] > 0 ? (r.stepMs[k] * timings.span[x.i]) / raw[x.i] : 0));
     const len = anyRun ? (r.actualMs ?? r.planMs) : r.planMs;
     r.startMs = t;
     r.endMs = t + len;

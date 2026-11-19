@@ -36,6 +36,8 @@ describe('breakdown', () => {
     expect(b.source).toBe('run');
     expect(b.rows[1].actualMs).toBe(2700);
     expect(b.rows[1].startMs).toBe(700);
+    expect(b.rows[1].stepMs).toEqual([300, 2000, 400]);
+    for (const r of b.rows) expect(r.stepMs.reduce((a, x) => a + x, 0)).toBeCloseTo(r.endMs - r.startMs);
   });
 
   it('restarts the timeline for the loop after an opener', () => {

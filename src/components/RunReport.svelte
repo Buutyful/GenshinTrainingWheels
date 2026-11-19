@@ -2,7 +2,7 @@
   import { setStepNote } from '../lib/app.svelte';
   import { breakdown, type TurnRow } from '../lib/breakdown';
   import { coach } from '../lib/coach';
-  import { flatten } from '../lib/engine';
+  import { flatten, type FlatStep } from '../lib/engine';
   import { clock, pct, secs } from '../lib/format';
   import { charName, stepLabel } from '../lib/notation';
   import { GRADE_LABEL, GRADES, grade, WINDOWS } from '../lib/rhythm';
@@ -63,6 +63,48 @@
       sameRotation ? m?.steps.durN : undefined,
     ),
   );
+  // ---- Timeline: one lane per character, the opener followed by one lap of the loop.
+  const openerEnd = $derived(bd.rows.reduce((m, r) => (r.opener ? Math.max(m, r.endMs) : m), 0));
+  const lanes = $derived(([0, 1, 2, 3] as Slot[]).filter((sl) => bd.rows.some((r) => r.slot === sl)));
+  /**
+   * When each input lands on the timeline. A step's duration is the wait before it, so it is
+   * pressed at the end of its slice and lasts until the next press; a character holds the field
+   * from the swap in to the next swap. The last input of a lap lasts until the next lap's first
+   * swap, which takes as long as the wait before the loop's first input.
+   */
+  const tl = $derived.by(() => {
+    const presses: { s: FlatStep; i: number; slot: Slot; opener: boolean; at: number }[] = [];
+    for (const r of bd.rows) {
+      let at = (r.opener ? 0 : openerEnd) + r.startMs;
+      r.items.forEach(({ s, i }, k) => {
+        at += r.stepMs[k];
+        presses.push({ s, i, slot: r.slot, opener: r.opener, at: at - r.actMs[k] });
+      });
+    }
+    const firstLoop = presses.find((p) => !p.opener);
+    const lead = firstLoop ? firstLoop.at - openerEnd : 0;
+    // Without an opener, start the picture at the first input rather than at the empty lead-in.
+    const shift = openerEnd > 0 ? 0 : lead;
+    const until = (k: number) => {
+      const p = presses[k];
+      const next = presses[k + 1];
+      return next ? next.at : p.at + lead;
+    };
+    const acts = presses
+      .map((p, k) => ({ ...p, at: p.at - shift, end: until(k) - shift }))
+      .filter((p) => p.s.action !== 'swap');
+    const turns: { slot: Slot; opener: boolean; start: number; end: number }[] = [];
+    presses.forEach((p, k) => {
+      const last = turns[turns.length - 1];
+      if (last && last.slot === p.slot) last.end = until(k) - shift;
+      else turns.push({ slot: p.slot, opener: p.opener, start: p.at - shift, end: until(k) - shift });
+    });
+    return { acts, turns, loopAt: openerEnd > 0 && firstLoop ? firstLoop.at : null, total: Math.max(1, ...turns.map((t) => t.end)) };
+  });
+  const tlPct = (ms: number) => (ms / tl.total) * 100;
+  const tickStep = $derived([1000, 2000, 5000, 10000, 15000, 30000].find((t) => tl.total / t <= 8) ?? 60000);
+  const ticks = $derived(Array.from({ length: Math.floor(tl.total / tickStep) + 1 }, (_, k) => k * tickStep));
+
   const stamp = (ms: number) => {
     const s = ms / 1000;
     return `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`;
@@ -216,6 +258,56 @@
     {#if !sameRotation}
       <p class="muted">The rotation has changed since this run, so its steps can't be mapped any more.</p>
     {:else}
+      <div class="tl-scroll">
+        <div class="tl" role="img" aria-label="Rotation timeline, one lane per character">
+          <div class="tl-axis" aria-hidden="true">
+            <span></span>
+            <div class="tl-scale">
+              {#each ticks as t (t)}<span style:left="{tlPct(t)}%">{t / 1000}s</span>{/each}
+              {#if tl.loopAt !== null}<b class="tl-loop-label" style:left="{tlPct(tl.loopAt)}%">Loop ↻</b>{/if}
+            </div>
+          </div>
+          {#each lanes as sl (sl)}
+            <div class="tl-lane el-{loadout.characters[sl]?.element ?? 'none'}">
+              <span class="tl-who">
+                <Avatar character={loadout.characters[sl]} size={24} />
+                <b>{names[sl]}</b>
+              </span>
+              <div class="tl-track">
+                {#each ticks as t (t)}<i class="tl-grid" style:left="{tlPct(t)}%"></i>{/each}
+                {#if tl.loopAt !== null}<i class="tl-loop" style:left="{tlPct(tl.loopAt)}%"></i>{/if}
+                {#each tl.turns as t, k (k)}
+                  {#if t.slot === sl}
+                    <div
+                      class="tl-turn"
+                      class:opener={t.opener}
+                      style:left="{tlPct(t.start)}%"
+                      style:width="{tlPct(t.end - t.start)}%"
+                      title="{names[sl]} · {stamp(t.start)} – {stamp(t.end)}"
+                    ></div>
+                  {/if}
+                {/each}
+                {#each tl.acts as a (a.i)}
+                  {#if a.slot === sl}
+                    <span
+                      class="tl-step heat-{heat(errs[a.i])}"
+                      class:opener={a.opener}
+                      class:noise={isNoise(a.s.action)}
+                      class:focus={focusStep === a.i}
+                      style:left="{tlPct(a.at)}%"
+                      style:width="{tlPct(a.end - a.at)}%"
+                      title={stepTip(a.i)}
+                    >
+                      <span>{stepLabel(a.s.action, a.s.count)}</span>
+                    </span>
+                  {/if}
+                {/each}
+              </div>
+            </div>
+          {/each}
+        </div>
+      </div>
+
       <div class="bd" role="table" aria-label="Rotation breakdown by character turn">
         <div class="bd-row bd-head muted small" role="row">
           <span role="columnheader">Time</span>
@@ -528,6 +620,131 @@
     justify-content: space-between;
     gap: 10px;
   }
+  /* Timeline */
+  .tl-scroll {
+    overflow-x: auto;
+    margin-bottom: 6px;
+  }
+  .tl {
+    min-width: 560px;
+    display: flex;
+    flex-direction: column;
+  }
+  .tl-axis,
+  .tl-lane {
+    display: grid;
+    grid-template-columns: 132px 1fr;
+    gap: 12px;
+    align-items: center;
+  }
+  .tl-scale {
+    position: relative;
+    height: 22px;
+    font-size: 11px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .tl-scale span,
+  .tl-loop-label {
+    position: absolute;
+    top: 2px;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+  .tl-scale span:first-child {
+    transform: none;
+  }
+  .tl-loop-label {
+    transform: none;
+    padding-left: 5px;
+    top: 2px;
+    color: var(--accent);
+    font-weight: 600;
+    background: var(--panel);
+  }
+  .tl-lane {
+    border-top: 1px solid #20242f;
+  }
+  .tl-who {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    font-size: 13px;
+  }
+  .tl-who b {
+    color: var(--el);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .tl-track {
+    position: relative;
+    height: 38px;
+  }
+  .tl-grid,
+  .tl-loop {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: #20242f;
+  }
+  .tl-loop {
+    background: none;
+    border-left: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+  .tl-turn {
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--el) 12%, transparent);
+  }
+  .tl-turn.opener,
+  .tl-step.opener {
+    opacity: 0.7;
+  }
+  .tl-step {
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    min-width: 6px;
+    container-type: inline-size;
+    padding: 0 1px;
+    border-right: 2px solid var(--panel);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: var(--h);
+    color: var(--hc, var(--text));
+  }
+  .tl-step span {
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  @container (max-width: 17px) {
+    .tl-step span {
+      display: none;
+    }
+  }
+  .tl-step.heat-0 {
+    --h: color-mix(in srgb, var(--el) 40%, var(--panel-2));
+    --hc: #fff;
+  }
+  .tl-step.noise.heat-0 {
+    --h: color-mix(in srgb, var(--el) 22%, var(--panel-2));
+    --hc: var(--text);
+    font-weight: 500;
+  }
+  .tl-step.focus {
+    box-shadow: inset 0 0 0 2px var(--text);
+  }
+
   .bd {
     display: flex;
     flex-direction: column;
