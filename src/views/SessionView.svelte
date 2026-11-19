@@ -9,7 +9,7 @@
   import { prettyCode } from '../lib/keycodes';
   import { charName, stepLabel } from '../lib/notation';
   import { isTauri } from '../lib/platform';
-  import { closePresentation, onPresentationReady, openPresentation, publishPresentation, type PresentationState } from '../lib/presentation';
+  import { closePresentation, onPresentationCommand, onPresentationReady, openPresentation, publishPresentation, type PresentationCommand, type PresentationState } from '../lib/presentation';
   import { Session, type Report, type SessionMode } from '../lib/session.svelte';
   import { STYLE_IDS, STYLES } from '../lib/music/band';
   import { GRADE_LABEL, GRADES } from '../lib/rhythm';
@@ -73,7 +73,6 @@
     const s = session.snap;
     // Plain data: it is cloned or serialised on its way to the other window.
     return $state.snapshot({
-      name: loadout.name,
       characters: loadout.characters,
       steps: session.steps,
       statuses: session.started ? s.statuses : null,
@@ -102,13 +101,27 @@
     }
   }
 
-  // Every change of the run reaches the overlay. Between runs (the report) it keeps
-  // showing the last state.
+  /** The last state sent, so the overlay can show the finished run while the report is open. */
+  let lastPresented: PresentationState | null = null;
+
+  function currentPresentation(): PresentationState | null {
+    const st = presentationState();
+    if (st) return (lastPresented = st);
+    return lastPresented && { ...lastPresented, status: 'done' };
+  }
+
+  // Every change of the run reaches the overlay.
   $effect(() => {
     if (!presenting) return;
-    const st = presentationState();
+    const st = currentPresentation();
     if (st) void publishPresentation(st);
   });
+
+  /** The overlay's own Start / Stop buttons. */
+  function onOverlayCommand(c: PresentationCommand) {
+    if (c === 'start' && !session?.started) begin();
+    else if (c === 'stop') finish();
+  }
 
   let musicStyle = $state<MusicStyle>(app.data.settings.music.style);
   /** Changing the style mid-run is heard on the next 16th; the cues stay the same. */
@@ -123,20 +136,23 @@
   }
 
   let stopReady: (() => void) | null = null;
+  let stopCommands: (() => void) | null = null;
 
   onMount(() => {
     if (loadout?.steps.length) prepare();
     else go({ name: 'home' });
     // The overlay asks for the state once it has loaded.
     void onPresentationReady(() => {
-      const st = presentationState();
+      const st = currentPresentation();
       if (st) void publishPresentation(st);
     }).then((f) => (stopReady = f));
+    void onPresentationCommand(onOverlayCommand).then((f) => (stopCommands = f));
   });
 
   onDestroy(() => {
     session?.stop();
     stopReady?.();
+    stopCommands?.();
     if (presenting) void closePresentation();
   });
 

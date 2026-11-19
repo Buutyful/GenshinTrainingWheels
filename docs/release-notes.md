@@ -5,12 +5,12 @@ Already on an earlier beta? Install this over it: your loadouts, runs and settin
 
 ## What's new
 
-- **Overlay for your videos.** *Overlay* in a run's top bar opens a window
+- **Overlay for your videos.** *Overlay* in a run's top bar opens a small bordered panel
   that stays above the game and shows the whole rotation, highlighting the step you are on
-  and greying out the turns you have played, so viewers can follow along. Drag and resize it,
-  then add it to OBS with Window Capture. Settings → *Overlay* picks a horizontal
-  strip or a vertical list, the size, and a dark, green-screen or transparent background. It
-  replaces the old overlay, which only shrank the main window.
+  and greying out the turns you have played, so viewers can follow along. It has its own
+  Start, Stop and close buttons. Drag it anywhere, then add it to OBS with Window Capture.
+  Settings → *Overlay* picks a horizontal strip or a vertical list, the size, and an optional
+  green screen around it. It replaces the old overlay, which only shrank the main window.
 - **No more cues ahead of time.** Practice no longer plays (or shows) the next step before
   it is due: it guessed wrong too often to help. You still hear sounds for mistakes, going off
   track and finished laps, and rhythm mode is unchanged.

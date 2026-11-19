@@ -1,11 +1,12 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "presentation",
-  "description": "The presentation window: listens for the run's state, moves and resizes itself",
+  "description": "The overlay window: follows the run, asks it to start or stop, moves, fits and closes itself",
   "windows": ["presentation"],
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",
-    "core:window:allow-set-size"
+    "core:window:allow-set-size",
+    "core:window:allow-close"
   ]
 }

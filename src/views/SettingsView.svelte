@@ -133,8 +133,9 @@
   <section class="panel">
     <h2>Overlay</h2>
     <p class="muted">
-      A separate window that shows the whole rotation and follows where you are in it. It stays above the game; add it to
-      your recording (OBS: Window Capture, or Display Capture) so viewers can keep up.
+      A small panel above the game that shows the whole rotation and follows where you are in it, with Start, Stop and close
+      buttons. Add it to your recording (OBS: Window Capture, or Display Capture) so viewers can keep up. Drag it to move it,
+      drag its edge to make it wider or narrower; its height follows the rotation.
     </p>
     <div class="form">
       <label class="field">
@@ -145,11 +146,10 @@
         </select>
       </label>
       <label class="field">
-        <span>Background</span>
+        <span>Around the panel</span>
         <select bind:value={s.presentation.background}>
-          <option value="dark">Dark</option>
+          <option value="none">Nothing (transparent)</option>
           <option value="green">Green screen (key it out in OBS)</option>
-          <option value="transparent">Transparent</option>
         </select>
       </label>
       <label class="field">
@@ -157,7 +157,7 @@
         <input type="range" min="0.6" max="2" step="0.05" bind:value={s.presentation.scale} />
       </label>
     </div>
-    <label class="check"><input type="checkbox" bind:checked={s.presentation.header} /><span>Show the loadout name, lap and time</span></label>
+    <label class="check"><input type="checkbox" bind:checked={s.presentation.header} /><span>Show the lap and time</span></label>
   </section>
 
   <section class="panel">

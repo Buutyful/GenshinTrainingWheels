@@ -1,5 +1,5 @@
 import { norm, resolveCharacter, rosterById } from './roster';
-import type { AppData, Bindings, Character, Loadout, Settings } from './types';
+import type { AppData, Bindings, Character, Loadout, PresentationSettings, Settings } from './types';
 
 export const DEFAULT_BINDINGS: Bindings = {
   swap1: ['Digit1'],
@@ -53,7 +53,7 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   presentation: {
     layout: 'horizontal',
-    background: 'dark',
+    background: 'none',
     scale: 1,
     header: true,
   },
@@ -114,6 +114,15 @@ export function defaultData(): AppData {
 }
 
 /** Saved values for the keys this version knows; options that no longer exist are dropped. */
+/** beta.4 offered dark / green / transparent backgrounds; the panel is now always dark. */
+function overlaySettings(p: PresentationSettings): PresentationSettings {
+  return {
+    ...p,
+    layout: p.layout === 'vertical' ? 'vertical' : 'horizontal',
+    background: p.background === 'green' ? 'green' : 'none',
+  };
+}
+
 function known<T extends object>(base: T, saved: Partial<T> | undefined): T {
   const out = { ...base };
   for (const k of Object.keys(base) as (keyof T)[]) {
@@ -148,7 +157,7 @@ export function migrate(raw: string | null): AppData | null {
         tracker: { ...base.settings.tracker, ...(s.tracker ?? {}) },
         audio: known(base.settings.audio, s.audio),
         music: known(base.settings.music, s.music),
-        presentation: known(base.settings.presentation, s.presentation),
+        presentation: overlaySettings(known(base.settings.presentation, s.presentation)),
       },
     };
   } catch {

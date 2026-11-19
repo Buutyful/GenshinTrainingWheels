@@ -251,14 +251,14 @@ export interface Settings {
   playerName?: string;
 }
 
-/** The presentation window: the whole rotation and where the player is, for videos. */
+/** The overlay window: the whole rotation and where the player is, for videos. */
 export interface PresentationSettings {
   layout: 'horizontal' | 'vertical';
-  /** Green is for a chroma key; transparent shows what is behind the window. */
-  background: 'dark' | 'green' | 'transparent';
+  /** Around the panel: nothing, or green for a chroma key. Older saves may hold other values. */
+  background: 'none' | 'green';
   /** Size multiplier, 0.6..2. */
   scale: number;
-  /** Loadout name, lap and time above the rotation. */
+  /** Lap and time next to the status. */
   header: boolean;
 }
 

@@ -18,7 +18,6 @@ const CLOSED_EVENT = 'presentation:closed';
 const URL = 'index.html#presentation';
 
 export interface PresentationState {
-  name: string;
   characters: Character[];
   steps: FlatStep[];
   /** Per-step results, null before Start. */
@@ -33,17 +32,58 @@ export interface PresentationState {
   prefs: PresentationSettings;
 }
 
-type Message = { kind: typeof STATE_EVENT; state: PresentationState } | { kind: typeof READY_EVENT | typeof CLOSED_EVENT };
+/** What the overlay's own buttons ask the session to do. */
+export type PresentationCommand = 'start' | 'stop';
+const COMMAND_EVENT = 'presentation:command';
+
+type Message =
+  | { kind: typeof STATE_EVENT; state: PresentationState }
+  | { kind: typeof COMMAND_EVENT; command: PresentationCommand }
+  | { kind: typeof READY_EVENT | typeof CLOSED_EVENT };
 
 let channel: BroadcastChannel | null = null;
 const bus = () => (channel ??= new BroadcastChannel('genshin-training-wheels-presentation'));
 let popup: Window | null = null;
 
-/** A starting size that fits the layout; the window can be resized freely after. */
+/** A starting size; the height then follows the panel and the width is the user's to drag. */
 export function presentationSize(p: PresentationSettings): { width: number; height: number } {
-  return p.layout === 'vertical'
-    ? { width: Math.round(340 * p.scale), height: 640 }
-    : { width: 1280, height: Math.round((p.header ? 170 : 130) * p.scale) };
+  return p.layout === 'vertical' ? { width: Math.round(300 * p.scale), height: 400 } : { width: 1100, height: 120 };
+}
+
+/** Overlay: make the window exactly as tall as its panel (plus the frame), optionally changing the width. */
+export async function fitOverlayHeight(width: number | null, panelHeight: number): Promise<void> {
+  if (!panelHeight) return;
+  const height = Math.ceil(panelHeight) + 8;
+  const w = width ?? window.innerWidth;
+  if (Math.abs(height - window.innerHeight) < 1 && w === window.innerWidth) return;
+  if (!isTauri) return window.resizeTo(w + (window.outerWidth - window.innerWidth), height + (window.outerHeight - window.innerHeight));
+  const { getCurrentWindow, LogicalSize } = await import('@tauri-apps/api/window');
+  await getCurrentWindow().setSize(new LogicalSize(w, height));
+}
+
+/** Overlay: close itself. The session notices and its button turns back to "Overlay". */
+export async function closeOverlay(): Promise<void> {
+  if (!isTauri) return window.close();
+  const { getCurrentWindow } = await import('@tauri-apps/api/window');
+  await getCurrentWindow().close();
+}
+
+/** Overlay: ask the session to start or stop the run. */
+export async function sendPresentationCommand(command: PresentationCommand): Promise<void> {
+  if (!isTauri) return bus().postMessage({ kind: COMMAND_EVENT, command } satisfies Message);
+  const { emitTo } = await import('@tauri-apps/api/event');
+  await emitTo('main', COMMAND_EVENT, command);
+}
+
+/** Main window: run the overlay's Start / Stop. */
+export async function onPresentationCommand(cb: (c: PresentationCommand) => void): Promise<() => void> {
+  if (!isTauri) {
+    const onMsg = (e: MessageEvent<Message>) => e.data.kind === COMMAND_EVENT && cb(e.data.command);
+    bus().addEventListener('message', onMsg);
+    return () => bus().removeEventListener('message', onMsg);
+  }
+  const { listen } = await import('@tauri-apps/api/event');
+  return listen<PresentationCommand>(COMMAND_EVENT, (e) => cb(e.payload));
 }
 
 /** Opens the window, or does nothing if it is already open. `onClosed` runs however it closes. */
