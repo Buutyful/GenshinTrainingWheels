@@ -3,26 +3,27 @@
   import Avatar from '../components/Avatar.svelte';
   import { blocksOf } from '../lib/blocks';
   import { clock } from '../lib/format';
-  import { charName, stepLabel } from '../lib/notation';
+  import { stepLabel } from '../lib/notation';
   import { isTauri } from '../lib/platform';
-  import { followPresentation, presentationSize, type PresentationState } from '../lib/presentation';
+  import { closeOverlay, fitOverlayHeight, followPresentation, presentationSize, sendPresentationCommand, type PresentationState } from '../lib/presentation';
 
   let st = $state.raw<PresentationState | null>(null);
-  let root = $state<HTMLElement | null>(null);
+  let panel = $state<HTMLElement | null>(null);
+  let rotation = $state<HTMLElement | null>(null);
 
   const blocks = $derived(st ? blocksOf(st.steps) : []);
   const prefs = $derived(st?.prefs);
-  const live = $derived(!!st && st.status !== 'idle' && st.status !== 'done');
+  const running = $derived(!!st && st.status !== 'idle' && st.status !== 'done');
   const current = $derived(st && st.status !== 'done' ? st.pointer : -1);
   const currentBlock = $derived(current >= 0 ? (st?.steps[current]?.block ?? -1) : -1);
   const hasOpener = $derived(blocks.some((b) => b.loopEntry));
 
-  const statusText = $derived.by(() => {
-    if (!st) return '';
-    if (st.status === 'idle' || st.status === 'armed') return 'Ready';
-    if (st.status === 'done') return 'Complete';
-    if (st.status === 'offtrack') return st.offReason === 'idle' ? 'Paused' : 'Off track';
-    return '';
+  const status = $derived.by((): { text: string; tone: string } => {
+    if (!st || st.status === 'idle') return { text: 'Ready', tone: 'idle' };
+    if (st.status === 'armed') return { text: 'Waiting for your first step', tone: 'idle' };
+    if (st.status === 'done') return { text: 'Done', tone: 'ok' };
+    if (st.status === 'offtrack') return { text: st.offReason === 'idle' ? 'Paused' : 'Off track', tone: 'warn' };
+    return { text: 'Live', tone: 'live' };
   });
 
   function chipState(index: number): string {
@@ -31,34 +32,37 @@
     return s === 'ok' || s === 'partial' ? 'done' : s;
   }
 
-  /** The window has no title bar: dragging anywhere moves it. */
+  /** The window has no title bar: dragging the panel moves it. */
   async function drag(e: MouseEvent) {
-    if (e.button !== 0 || !isTauri) return;
+    if (e.button !== 0 || !isTauri || (e.target as HTMLElement).closest('button')) return;
     const { getCurrentWindow } = await import('@tauri-apps/api/window');
     await getCurrentWindow().startDragging();
   }
 
-  // Switching layout resizes the window to fit it; any other size the user set is kept.
+  // Switching layout sets a width that suits it; the height always follows the panel.
   let lastLayout: string | null = null;
   $effect(() => {
     const p = prefs;
     if (!p) return;
-    if (lastLayout !== null && lastLayout !== p.layout) {
-      const { width, height } = presentationSize(p);
-      if (!isTauri) window.resizeTo(width, height);
-      else void import('@tauri-apps/api/window').then(({ getCurrentWindow, LogicalSize }) =>
-        getCurrentWindow().setSize(new LogicalSize(width, height)),
-      );
-    }
+    if (lastLayout !== null && lastLayout !== p.layout) void fitOverlayHeight(presentationSize(p).width, panel?.offsetHeight ?? 0);
     lastLayout = p.layout;
   });
 
-  // A long rotation in a small window: keep the current block in view.
+  // The window is as tall as the panel: no empty space below it, however the rotation wraps.
+  $effect(() => {
+    const el = panel;
+    if (!el) return;
+    const ro = new ResizeObserver(() => void fitOverlayHeight(null, el.offsetHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
+
+  // A long rotation in a narrow window: keep the current block in view.
   $effect(() => {
     const b = currentBlock;
-    if (b < 0 || !root) return;
+    if (b < 0 || !rotation) return;
     void tick().then(() =>
-      root?.querySelector(`[data-block="${b}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' }),
+      rotation?.querySelector(`[data-block="${b}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' }),
     );
   });
 
@@ -70,54 +74,55 @@
   });
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div
-  class="pres bg-{prefs?.background ?? 'dark'}"
-  class:vertical={prefs?.layout === 'vertical'}
-  style:--s={prefs?.scale ?? 1}
-  bind:this={root}
-  onmousedown={drag}
->
-  {#if !st}
-    <div class="waiting">Waiting for a loadout…</div>
-  {:else}
-    {#if prefs?.header}
-      <div class="head">
-        <span class="name">{st.name}</span>
-        {#if st.status !== 'idle'}
-          <span class="stat">Lap <b>{st.lap + (st.status === 'done' ? 0 : 1)}</b></span>
-          <span class="stat"><b>{clock(st.elapsedMs)}</b></span>
+<div class="frame" class:green={prefs?.background === 'green'} style:--s={prefs?.scale ?? 1}>
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="ov-panel" class:vertical={prefs?.layout === 'vertical'} bind:this={panel} onmousedown={drag}>
+    <div class="head">
+      <span class="status t-{status.tone}"><i></i>{status.text}</span>
+      {#if st && prefs?.header && st.status !== 'idle'}
+        <span class="stat">Lap <b>{Math.max(1, st.lap + (st.status === 'done' ? 0 : 1))}</b></span>
+        <span class="stat"><b>{clock(st.elapsedMs)}</b></span>
+      {/if}
+      <span class="spacer"></span>
+      {#if st}
+        {#if running}
+          <button class="danger" onclick={() => sendPresentationCommand('stop')}>Stop</button>
+        {:else}
+          <button class="primary" onclick={() => sendPresentationCommand('start')}>Start</button>
         {/if}
-        {#if statusText}<span class="state s-{st.status}">{statusText}</span>{/if}
-      </div>
-    {/if}
-    <div class="rotation">
-      {#if hasOpener}<span class="p-part">Opener</span>{/if}
-      {#each blocks as b, bi (bi)}
-        {#if b.loopEntry}<span class="p-part loop">↻ Loop</span>{/if}
-        {@const past = live && currentBlock >= 0 && bi < currentBlock}
-        <div
-          class="p-block el-{st.characters[b.slot]?.element ?? 'none'}"
-          class:active={bi === currentBlock}
-          class:past
-          class:swap-now={b.swap >= 0 && b.swap === current}
-          data-block={bi}
-        >
-          <Avatar character={st.characters[b.slot]} size={Math.round(40 * (prefs?.scale ?? 1))} />
-          <div class="p-body">
-            {#if prefs?.layout === 'vertical'}<span class="p-who">{charName(st.characters, b.slot as 0 | 1 | 2 | 3)}</span>{/if}
-            <div class="p-chips">
+      {/if}
+      <button class="ghost close" title="Close the overlay" aria-label="Close the overlay" onclick={closeOverlay}>
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+      </button>
+    </div>
+
+    {#if !st}
+      <div class="waiting">Open a loadout in Genshin Training Wheels.</div>
+    {:else}
+      <div class="rotation" bind:this={rotation}>
+        {#if hasOpener}<span class="part">Opener</span>{/if}
+        {#each blocks as b, bi (bi)}
+          {#if b.loopEntry}<span class="part loop">↻ Loop</span>{/if}
+          <div
+            class="turn el-{st.characters[b.slot]?.element ?? 'none'}"
+            class:active={bi === currentBlock}
+            class:past={running && currentBlock >= 0 && bi < currentBlock}
+            class:swap-now={b.swap >= 0 && b.swap === current}
+            data-block={bi}
+          >
+            <Avatar character={st.characters[b.slot]} size={Math.round(34 * (prefs?.scale ?? 1))} />
+            <div class="ov-chips">
               {#each b.items as { step, index } (index)}
-                <span class="p-chip c-{chipState(index)}">
+                <span class="ov-chip c-{chipState(index)}">
                   {stepLabel(step.action, step.count)}{#if index === current && step.action === 'na' && step.count > 1 && st.naClicks > 0}<small>{st.naClicks}/{step.count}</small>{/if}
                 </span>
               {/each}
             </div>
           </div>
-        </div>
-      {/each}
-    </div>
-  {/if}
+        {/each}
+      </div>
+    {/if}
+  </div>
 </div>
 
 <style>
@@ -125,81 +130,83 @@
   :global(html.presentation body) {
     background: transparent;
     overflow: hidden;
+    height: auto;
+    min-height: 0;
   }
   :global(html.presentation #app) {
-    height: 100%;
+    min-height: 0;
   }
 
-  .pres {
+  /* Around the panel: transparent, or green for a chroma key. */
+  .frame {
     --s: 1;
-    height: 100%;
-    overflow: auto;
-    scrollbar-width: none;
-    padding: calc(10px * var(--s)) calc(12px * var(--s));
+    padding: 4px;
+    font-size: calc(15px * var(--s));
+  }
+  .frame.green { background: #00b140; }
+
+  .ov-panel {
     display: flex;
     flex-direction: column;
-    gap: calc(8px * var(--s));
-    font-size: calc(16px * var(--s));
+    gap: calc(10px * var(--s));
+    padding: calc(10px * var(--s)) calc(12px * var(--s)) calc(12px * var(--s));
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
     cursor: default;
   }
-  .bg-dark { background: var(--bg); }
-  .bg-green { background: #00b140; }
-  .bg-transparent { background: transparent; }
-  /* Over green or the game itself, text needs its own contrast. */
-  .bg-green .head,
-  .bg-transparent .head,
-  .bg-green .p-part,
-  .bg-transparent .p-part { text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9); }
 
-  .waiting { margin: auto; color: var(--muted); }
-
-  .head { display: flex; align-items: baseline; gap: 1em; white-space: nowrap; }
-  .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  .stat { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .head { display: flex; align-items: center; gap: 0.9em; min-height: 28px; white-space: nowrap; }
+  .spacer { flex: 1; }
+  .status { display: inline-flex; align-items: center; gap: 0.45em; font-size: 0.85em; font-weight: 600; color: var(--muted); }
+  .status i { width: 0.55em; height: 0.55em; border-radius: 50%; background: currentColor; }
+  .status.t-live { color: var(--ok); }
+  .status.t-warn { color: var(--warn); }
+  .status.t-ok { color: var(--ok); }
+  .stat { font-size: 0.85em; color: var(--muted); font-variant-numeric: tabular-nums; }
   .stat b { color: var(--text); font-weight: 600; }
-  .state { margin-left: auto; font-size: 0.8em; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
-  .state.s-offtrack { color: var(--warn); }
-  .state.s-done { color: var(--ok); }
+  .head button { padding: 3px 12px; font-size: 13px; }
+  .head .close { padding: 5px; display: inline-grid; place-items: center; }
 
-  .rotation { display: flex; flex-wrap: wrap; align-items: center; gap: calc(8px * var(--s)); }
-  .vertical .rotation { flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
+  .waiting { color: var(--muted); font-size: 0.9em; }
 
-  .p-part { font-size: 0.72em; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
-  .p-part.loop { color: var(--accent); }
+  .rotation { display: flex; flex-wrap: wrap; align-items: center; gap: calc(6px * var(--s)); }
+  .ov-panel.vertical .rotation { flex-direction: column; align-items: stretch; flex-wrap: nowrap; }
 
-  .p-block {
+  .part { font-size: 0.7em; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .part.loop { color: var(--accent); }
+
+  .turn {
     display: flex;
     align-items: center;
-    gap: 0.5em;
-    padding: 0.35em 0.6em 0.35em 0.4em;
-    border-radius: 0.6em;
+    gap: 0.45em;
+    padding: 0.3em 0.5em 0.3em 0.3em;
+    border-radius: 0.55em;
     background: var(--panel-2);
-    transition: background 0.15s, opacity 0.15s;
+    transition: background 0.15s;
   }
-  .p-block.active { background: color-mix(in srgb, var(--el) 24%, var(--panel-2)); }
-  /* Dim the content, not the block: a see-through block would let a green screen bleed in. */
-  .p-block.past > * { opacity: 0.5; }
-  .p-block.swap-now { animation: swap 0.9s ease-in-out infinite; }
+  .turn.active { background: color-mix(in srgb, var(--el) 22%, var(--panel-2)); }
+  /* Dim the content, not the turn: a see-through turn would let a green screen bleed in. */
+  .turn.past > * { opacity: 0.45; }
+  .turn.swap-now { animation: swap 0.9s ease-in-out infinite; }
   @keyframes swap {
     50% { background: color-mix(in srgb, var(--el) 40%, var(--panel-2)); }
   }
 
-  .p-body { display: flex; flex-direction: column; gap: 0.2em; min-width: 0; }
-  .p-who { font-size: 0.8em; font-weight: 600; color: var(--el); }
-  .p-chips { display: flex; flex-wrap: wrap; gap: 0.3em; }
-  .p-chip {
+  .ov-chips { display: flex; flex-wrap: wrap; gap: 0.3em; }
+  .ov-chip {
     display: inline-flex;
     align-items: baseline;
     gap: 0.3em;
-    padding: 0.15em 0.55em;
+    padding: 0.12em 0.5em;
     border-radius: 0.4em;
     background: #272c3b;
     font-weight: 600;
     white-space: nowrap;
   }
-  .p-chip small { font-size: 0.8em; font-weight: 500; opacity: 0.8; }
-  .p-chip.c-current { background: var(--accent); color: #0e1016; transform: scale(1.08); }
-  .p-chip.c-done { background: #1f2a26; color: #8fcfa8; }
-  .p-chip.c-missed { background: #3d1d20; color: var(--bad); text-decoration: line-through; }
-  .p-chip.c-skipped { opacity: 0.4; }
+  .ov-chip small { font-size: 0.8em; font-weight: 500; opacity: 0.8; }
+  .ov-chip.c-current { background: var(--accent); color: #0e1016; }
+  .ov-chip.c-done { color: #8fcfa8; background: #1f2a26; }
+  .ov-chip.c-missed { background: #3d1d20; color: var(--bad); text-decoration: line-through; }
+  .ov-chip.c-skipped { opacity: 0.4; }
 </style>

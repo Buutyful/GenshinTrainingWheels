@@ -16,7 +16,7 @@ anything, or send any input.
 - **Any rotation.** Paste it in the notation Hexenzirkel and KQM use, or import a gcsim or
   Genshin Optimizer config.
 - **An overlay for your videos.** A window above the game that shows the full rotation and
-  highlights the step you are on. Capture it in OBS: dark, green-screen or transparent.
+  highlights the step you are on, with Start and Stop on it. Capture it in OBS.
 - **Rhythm mode.** Your own clean lap becomes a backing track, and every step is judged on the
   beat.
 - **Feedback that says what to fix.** A verdict, the three things to work on next, and the
@@ -89,12 +89,12 @@ Skip a step and it carries on from where you are. Lose the thread and it waits u
 any character's turn again. Stop pressing keys and the run pauses without penalty. **F10**
 stops the run, **F9** restarts it.
 
-**Overlay** in the session's top bar opens a borderless window that stays above the game.
+**Overlay** in the session's top bar opens a small bordered panel that stays above the game.
 It shows the whole rotation, highlights the step you are on and greys out the turns you have
-played, with the lap and time above. Drag it anywhere and resize it to fit your video. Add it
-to OBS with Window Capture (or Display Capture). Settings → **Overlay** picks a
-horizontal strip or a vertical list, the size, and a dark, green-screen or transparent
-background.
+played, with the run's status, lap and time, **Start** / **Stop** and a close button on top.
+Drag it anywhere; drag its edge to make it wider or narrower, and its height follows the
+rotation. Add it to OBS with Window Capture (or Display Capture). Settings → **Overlay** picks a
+horizontal strip or a vertical list, the size, and a green screen around it if you key it out.
 
 ### 3. See what to fix
 
