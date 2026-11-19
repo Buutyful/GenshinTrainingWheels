@@ -65,6 +65,31 @@ fn relaunch_as_admin(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Opens the overlay window described in tauri.conf.json. It is built here rather than from
+/// JavaScript because WebView2 only lets windows share a profile when they start with the same
+/// browser arguments, and the JavaScript API cannot set them. Async: creating a window from a
+/// synchronous command deadlocks on Windows.
+#[tauri::command]
+async fn open_presentation(app: AppHandle, width: f64, height: f64) -> Result<(), String> {
+    if app.get_webview_window("presentation").is_some() {
+        return Ok(());
+    }
+    let config = app
+        .config()
+        .app
+        .windows
+        .iter()
+        .find(|w| w.label == "presentation")
+        .cloned()
+        .ok_or("the overlay window is missing from tauri.conf.json")?;
+    tauri::WebviewWindowBuilder::from_config(&app, &config)
+        .map_err(|e| e.to_string())?
+        .inner_size(width, height)
+        .build()
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
@@ -84,7 +109,8 @@ pub fn run() {
             start_capture,
             stop_capture,
             is_elevated,
-            relaunch_as_admin
+            relaunch_as_admin,
+            open_presentation
         ])
         .run(tauri::generate_context!())
         .expect("error while running Genshin Training Wheels");
