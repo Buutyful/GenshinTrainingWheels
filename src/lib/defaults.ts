@@ -51,6 +51,12 @@ export const DEFAULT_SETTINGS: Settings = {
     keys: 0.7,
     reverb: 0.5,
   },
+  presentation: {
+    layout: 'horizontal',
+    background: 'dark',
+    scale: 1,
+    header: true,
+  },
 };
 
 export function newId(): string {
@@ -142,6 +148,7 @@ export function migrate(raw: string | null): AppData | null {
         tracker: { ...base.settings.tracker, ...(s.tracker ?? {}) },
         audio: known(base.settings.audio, s.audio),
         music: known(base.settings.music, s.music),
+        presentation: known(base.settings.presentation, s.presentation),
       },
     };
   } catch {

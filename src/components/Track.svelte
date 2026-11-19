@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { blocksOf } from '../lib/blocks';
   import type { FlatStep, StepStatus } from '../lib/engine';
   import { stepLabel } from '../lib/notation';
   import type { Character } from '../lib/types';
@@ -14,17 +15,7 @@
   }
   let { steps, characters, statuses, pointer = -1, naClicks = 0, compact = false }: Props = $props();
 
-  const blocks = $derived.by(() => {
-    const out: { slot: number; swap: number; loopEntry: boolean; items: { step: FlatStep; index: number }[] }[] = [];
-    steps.forEach((step, index) => {
-      let b = out[step.block];
-      if (!b) b = out[step.block] = { slot: step.slot, swap: -1, loopEntry: false, items: [] };
-      if (step.loopEntry) b.loopEntry = true;
-      if (step.implicit) b.swap = index;
-      else b.items.push({ step, index });
-    });
-    return out;
-  });
+  const blocks = $derived(blocksOf(steps));
   const currentBlock = $derived(pointer >= 0 ? steps[pointer]?.block : -1);
   const hasOpener = $derived(blocks.some((b) => b.loopEntry));
 </script>

@@ -246,11 +246,23 @@ export interface Settings {
   tracker: TrackerSettings;
   audio: AudioSettings;
   music: MusicSettings;
+  presentation: PresentationSettings;
   /** Name shown on friends' ladders when sharing a result. */
   playerName?: string;
 }
 
-export type MusicStyle = 'runway' | 'hiphop' | 'funk' | 'house' | 'rock';
+/** The presentation window: the whole rotation and where the player is, for videos. */
+export interface PresentationSettings {
+  layout: 'horizontal' | 'vertical';
+  /** Green is for a chroma key; transparent shows what is behind the window. */
+  background: 'dark' | 'green' | 'transparent';
+  /** Size multiplier, 0.6..2. */
+  scale: number;
+  /** Loadout name, lap and time above the rotation. */
+  header: boolean;
+}
+
+export type MusicStyle ='runway' | 'hiphop' | 'funk' | 'house' | 'rock';
 
 /** The rhythm-mode backing band; the action cues are the same in every style. */
 export interface MusicSettings {

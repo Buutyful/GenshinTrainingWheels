@@ -114,8 +114,10 @@ export class Session {
     this.metrics = new MetricsCollector(this.steps, this.tracker, sig, this.targetMs);
     const timings = resolveTimings(loadout.timings, this.steps, sig);
     this.learner = new TimingLearner(this.steps, timings);
-    // In rhythm mode the music is the cue.
-    if (mode === 'rhythm') settings.audio.guidance = 'off';
+    // Cues that anticipate the next step are shelved (the CueDirector keeps the code): played
+    // ahead of time they did not help. The director still plays the feedback sounds, and in
+    // rhythm mode the music is the cue.
+    settings.audio.guidance = 'off';
     this.director = new CueDirector(this.tracker, timings, settings.audio, this.audio);
     this.recorder = new LapRecorder(this.steps, loadout.loop, (lap) => this.onCleanLap(lap));
     if (mode === 'rhythm') {

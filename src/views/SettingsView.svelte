@@ -79,10 +79,9 @@
     Object.assign(previewCfg, $state.snapshot(s.audio));
     await preview.unlock();
   }
-  async function playCue(step: FlatStep, leadIn = false) {
+  async function playCue(step: FlatStep) {
     await ready();
-    const now = nowMs();
-    preview.cue(step, now, leadIn ? now + s.audio.leadMs : null);
+    preview.cue(step, nowMs(), null);
   }
   async function playSfx(name: Sfx) {
     await ready();
@@ -132,60 +131,54 @@
   </section>
 
   <section class="panel">
-    <h2>Audio cues</h2>
+    <h2>Presentation window</h2>
     <p class="muted">
-      Cues play ahead of time, so you can hear them, understand them and still press on the beat. The timing follows your
-      own rhythm: it starts from typical values and adjusts to your clean laps.
+      A separate window that shows the whole rotation and follows where you are in it. It stays above the game; add it to
+      your recording (OBS: Window Capture, or Display Capture) so viewers can keep up.
     </p>
     <div class="form">
       <label class="field">
-        <span>Cue sound</span>
-        <select bind:value={s.audio.cueSound}>
-          <option value="sounds">A distinct sound per key</option>
-          <option value="voice">A voice calls the key (one, two, E, Q, N, C…)</option>
+        <span>Layout</span>
+        <select bind:value={s.presentation.layout}>
+          <option value="horizontal">Horizontal strip (top or bottom of the video)</option>
+          <option value="vertical">Vertical list (side of the video)</option>
         </select>
       </label>
       <label class="field">
-        <span>Cue</span>
-        <select bind:value={s.audio.guidance}>
-          <option value="full">Every step, ahead of time</option>
-          <option value="swaps">Character swaps only, ahead of time</option>
-          <option value="adaptive">Only when I am late or slip</option>
-          <option value="off">Off</option>
+        <span>Background</span>
+        <select bind:value={s.presentation.background}>
+          <option value="dark">Dark</option>
+          <option value="green">Green screen (key it out in OBS)</option>
+          <option value="transparent">Transparent</option>
         </select>
       </label>
       <label class="field">
-        <span>Lead time · {s.audio.leadMs} ms before the key is due</span>
-        <input type="range" min="200" max="1000" step="50" bind:value={s.audio.leadMs} />
+        <span>Size · {Math.round(s.presentation.scale * 100)}%</span>
+        <input type="range" min="0.6" max="2" step="0.05" bind:value={s.presentation.scale} />
       </label>
-      <label class="field">
-        <span>Repeat the cue when I am {(s.audio.hesitateMs / 1000).toFixed(1)}s late</span>
-        <input type="range" min="500" max="4000" step="100" bind:value={s.audio.hesitateMs} />
-      </label>
+    </div>
+    <label class="check"><input type="checkbox" bind:checked={s.presentation.header} /><span>Show the loadout name, lap and time</span></label>
+  </section>
+
+  <section class="panel">
+    <h2>Sounds</h2>
+    <p class="muted">These sounds react to what you just did; the next step is shown on screen, not cued ahead of time.</p>
+    <div class="form">
       <label class="field">
         <span>Volume · {Math.round(s.audio.volume * 100)}%</span>
         <input type="range" min="0" max="1" step="0.05" bind:value={s.audio.volume} />
       </label>
     </div>
-    <label class="check"><input type="checkbox" bind:checked={s.audio.buildup} /><span>Build-up: a rising sweep from the cue to the moment to press</span></label>
     <label class="check"><input type="checkbox" bind:checked={s.audio.feedback} /><span>Sounds for mistakes, going off track, rejoining and finished laps</span></label>
     <label class="check"><input type="checkbox" bind:checked={s.audio.hitTick} /><span>Tick on every correct step</span></label>
-
-    <h2>Sound guide</h2>
-    <p class="muted">Learn the vocabulary: a swap climbs one note per slot, so slot 3 is three notes.</p>
-    <div class="row wrap">
-      {#each CUES as c (c.label)}<button onclick={() => playCue(c.step)}>{c.label}</button>{/each}
-    </div>
     <div class="row wrap">
       {#each FEEDBACK as f (f.sfx)}<button class="ghost" onclick={() => playSfx(f.sfx)}>{f.label}</button>{/each}
-      <div class="spacer"></div>
-      <button onclick={() => playCue(CUES[2].step, true)}>Hear a cue with its build-up</button>
     </div>
 
     <h2>Rhythm mode music</h2>
     <p class="muted">
-      Rhythm mode plays your rotation as cues over a band. The cues are the same in every style; pick the music you can listen
-      to for a long time.
+      Rhythm mode plays your rotation as action sounds over a band. They are the same in every style; pick the music you can
+      listen to for a long time.
     </p>
     <div class="row wrap">
       <label class="field">
@@ -194,8 +187,19 @@
           {#each STYLE_IDS as id (id)}<option value={id}>{STYLES[id].label}</option>{/each}
         </select>
       </label>
+      <label class="field">
+        <span>Action sounds</span>
+        <select bind:value={s.audio.cueSound}>
+          <option value="sounds">A distinct sound per key</option>
+          <option value="voice">A voice calls the key (one, two, E, Q, N, C…)</option>
+        </select>
+      </label>
       <div class="spacer"></div>
       <button onclick={() => go({ name: 'jam' })}>Open the Music lab</button>
+    </div>
+    <p class="muted">Learn the vocabulary: a swap climbs one note per slot, so slot 3 is three notes.</p>
+    <div class="row wrap">
+      {#each CUES as c (c.label)}<button onclick={() => playCue(c.step)}>{c.label}</button>{/each}
     </div>
     <h2>Rhythm mode judging</h2>
     <p class="muted">

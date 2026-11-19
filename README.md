@@ -1,10 +1,10 @@
 # Genshin Training Wheels
 
 **Learn a Genshin Impact team rotation by playing it.** Describe your team and its rotation
-once. While you play, the app listens to your keys, follows where you are in the rotation and
-cues the next move through your headphones, early enough to react to. Afterwards it tells you
-what went wrong, where, and what to work on next. Once the rotation is in your hands, turn the
-cues down and ride without them.
+once. While you play, the app listens to your keys and follows where you are in the rotation.
+Afterwards it tells you what went wrong, where, and what to work on next. Recording a video? A
+presentation window shows the whole rotation and where you are in it, so viewers can follow
+along.
 
 <p align="center">
   <img src="docs/screenshots/home.png" alt="Home screen: three loadouts (Raiden National, Hu Tao Double Hydro, Neuvillette Hypercarry) with their teams, rotations and last results" width="900">
@@ -15,8 +15,8 @@ anything, or send any input.
 
 - **Any rotation.** Paste it in the notation Hexenzirkel and KQM use, or import a gcsim or
   Genshin Optimizer config.
-- **Cues that lead you.** A distinct sound per key, played ahead of time, that adapts to your
-  own pace.
+- **A presentation for your videos.** A window above the game that shows the full rotation and
+  highlights the step you are on. Capture it in OBS: dark, green-screen or transparent.
 - **Rhythm mode.** Your own clean lap becomes a backing track, and every step is judged on the
   beat.
 - **Feedback that says what to fix.** A verdict, the three things to work on next, and the
@@ -77,8 +77,8 @@ action list or a full loadout.
 ### 2. Practise
 
 Press **Start**, switch to the game and play. The tutor knows who is on field from your swap
-keys, reads Alt+number as "swap and burst", tells a tap from a hold and counts attacks. The cue
-for each step plays about half a second before it is due, and a pace bar shows the lap against
+keys, reads Alt+number as "swap and burst", tells a tap from a hold and counts attacks. The
+screen shows the step you are on and the one after it, and a pace bar shows the lap against
 your rotation time.
 
 <p align="center">
@@ -88,6 +88,13 @@ your rotation time.
 Skip a step and it carries on from where you are. Lose the thread and it waits until you start
 any character's turn again. Stop pressing keys and the run pauses without penalty. **F10**
 stops the run, **F9** restarts it.
+
+**Presentation** in the session's top bar opens a borderless window that stays above the game.
+It shows the whole rotation, highlights the step you are on and greys out the turns you have
+played, with the lap and time above. Drag it anywhere and resize it to fit your video. Add it
+to OBS with Window Capture (or Display Capture). Settings → **Presentation window** picks a
+horizontal strip or a vertical list, the size, and a dark, green-screen or transparent
+background.
 
 ### 3. See what to fix
 
@@ -145,26 +152,13 @@ After several wrong inputs in a row the tutor declares you **off track**: it sto
 picks you up again when you start any character's turn (or, optionally, only when you restart
 from step one).
 
-### Audio cues
+### Sounds
 
-Cues play **ahead of time** (500 ms by default), because a cue that sounds at the instant a key
-is due arrives too late to act on. A soft build-up rises from the cue to the moment to press.
-The tutor starts from typical timings and then learns the pace of your own clean steps, per
-loadout. Settings → **Cue sound** switches every cue to a voice that calls the key instead, and
-Settings → Sound guide plays them all.
-
-<details>
-<summary>Practice-mode sounds</summary>
-
-| Cue | Sound |
-| --- | --- |
-| Swap to slot N | Arpeggio climbing N notes |
-| Skill / hold skill | Rising "bloop" / the same, sustained |
-| Burst | Fast high trill ending on a sparkle |
-| Attacks / charged | One "tok" per hit / tok and a low drop |
-| Dash / jump | Breath of noise / upward chirp |
-
-</details>
+Practice runs do not cue the next step ahead of time; the screen and the presentation window
+show it. Short sounds react to what you just did: a mistake, going off track, rejoining, a
+finished lap. Settings can turn them off or add a tick on every correct step. In rhythm mode
+each step has its own sound in the track; Settings → **Action sounds** switches them to a voice
+that calls the key.
 
 <details>
 <summary>Rhythm-mode sounds and music styles</summary>
@@ -203,7 +197,7 @@ each judgement; Settings can turn it off.
 - **Game terms.** This is an unofficial third-party tool. It does not interact with the game
   client, but HoYoverse's terms do not approve third-party tools in general; use it at your own
   discretion.
-- **Windowed or borderless** is needed to see the compact overlay; audio cues work in any mode.
+- **Windowed or borderless** is needed to see the presentation window over the game.
 - Input-only tracking cannot see cooldowns, energy or a swap the game refused.
 - The character roster and portraits ship with the app; nothing is downloaded at run time.
 
@@ -224,7 +218,9 @@ npm run screenshots # README screenshots, with `npm run dev` running
 
 - `src/lib/interpreter.ts`: raw input to game actions
 - `src/lib/engine.ts`: rotation tracking, skips, off-track and resync
-- `src/lib/cues.ts`, `src/lib/timing.ts`, `src/lib/audio.ts`: when to cue, learned pace, sound
+- `src/lib/presentation.ts`, `src/views/PresentationView.svelte`: the presentation window
+- `src/lib/audio.ts`, `src/lib/timing.ts`: sounds, learned pace
+- `src/lib/cues.ts`: feedback sounds; its ahead-of-time cues are switched off for now
 - `src/lib/metrics.ts`, `src/lib/coach.ts`, `src/lib/breakdown.ts`: run metrics, the verdict and
   tips, the turn-by-turn breakdown
 - `src/lib/ladder.ts`: result codes and ladders

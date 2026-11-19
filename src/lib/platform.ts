@@ -38,15 +38,6 @@ export async function relaunchAsAdmin(): Promise<void> {
   if (isTauri) await invoke('relaunch_as_admin');
 }
 
-export async function setCompact(on: boolean): Promise<void> {
-  if (!isTauri) return;
-  const { getCurrentWindow, LogicalSize } = await import('@tauri-apps/api/window');
-  const w = getCurrentWindow();
-  await w.setDecorations(!on);
-  await w.setAlwaysOnTop(on);
-  await w.setSize(on ? new LogicalSize(560, 170) : new LogicalSize(1100, 740));
-}
-
 interface RawPayload {
   sc: number;
   e0: boolean;
