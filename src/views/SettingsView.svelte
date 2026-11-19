@@ -131,7 +131,7 @@
   </section>
 
   <section class="panel">
-    <h2>Presentation window</h2>
+    <h2>Overlay</h2>
     <p class="muted">
       A separate window that shows the whole rotation and follows where you are in it. It stays above the game; add it to
       your recording (OBS: Window Capture, or Display Capture) so viewers can keep up.

@@ -64,7 +64,7 @@
     lastRun = r.summary;
   }
 
-  /** Whether the presentation window is open. */
+  /** Whether the overlay window is open. */
   let presenting = $state(false);
   let presentError = $state<string | null>(null);
 
@@ -98,11 +98,11 @@
       await openPresentation($state.snapshot(app.data.settings.presentation), () => (presenting = false));
       presenting = true;
     } catch (e) {
-      presentError = `Could not open the presentation window: ${e instanceof Error ? e.message : String(e)}`;
+      presentError = `Could not open the overlay: ${e instanceof Error ? e.message : String(e)}`;
     }
   }
 
-  // Every change of the run reaches the presentation window. Between runs (the report) it keeps
+  // Every change of the run reaches the overlay. Between runs (the report) it keeps
   // showing the last state.
   $effect(() => {
     if (!presenting) return;
@@ -127,7 +127,7 @@
   onMount(() => {
     if (loadout?.steps.length) prepare();
     else go({ name: 'home' });
-    // The presentation window asks for the state once it has loaded.
+    // The overlay asks for the state once it has loaded.
     void onPresentationReady(() => {
       const st = presentationState();
       if (st) void publishPresentation(st);
@@ -180,7 +180,7 @@
     <Mixer />
     {#if session.started}<button onclick={() => session?.restart()}>Restart</button>{/if}
     <button class:on={presenting} onclick={togglePresentation} title="A window above the game that shows the rotation and where you are in it, for recording">
-      {presenting ? 'Close presentation' : 'Presentation'}
+      {presenting ? 'Close overlay' : 'Overlay'}
     </button>
   </header>
 

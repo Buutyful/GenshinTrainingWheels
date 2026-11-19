@@ -3,7 +3,7 @@
 **Learn a Genshin Impact team rotation by playing it.** Describe your team and its rotation
 once. While you play, the app listens to your keys and follows where you are in the rotation.
 Afterwards it tells you what went wrong, where, and what to work on next. Recording a video? A
-presentation window shows the whole rotation and where you are in it, so viewers can follow
+overlay shows the whole rotation and where you are in it, so viewers can follow
 along.
 
 <p align="center">
@@ -15,7 +15,7 @@ anything, or send any input.
 
 - **Any rotation.** Paste it in the notation Hexenzirkel and KQM use, or import a gcsim or
   Genshin Optimizer config.
-- **A presentation for your videos.** A window above the game that shows the full rotation and
+- **An overlay for your videos.** A window above the game that shows the full rotation and
   highlights the step you are on. Capture it in OBS: dark, green-screen or transparent.
 - **Rhythm mode.** Your own clean lap becomes a backing track, and every step is judged on the
   beat.
@@ -89,10 +89,10 @@ Skip a step and it carries on from where you are. Lose the thread and it waits u
 any character's turn again. Stop pressing keys and the run pauses without penalty. **F10**
 stops the run, **F9** restarts it.
 
-**Presentation** in the session's top bar opens a borderless window that stays above the game.
+**Overlay** in the session's top bar opens a borderless window that stays above the game.
 It shows the whole rotation, highlights the step you are on and greys out the turns you have
 played, with the lap and time above. Drag it anywhere and resize it to fit your video. Add it
-to OBS with Window Capture (or Display Capture). Settings → **Presentation window** picks a
+to OBS with Window Capture (or Display Capture). Settings → **Overlay** picks a
 horizontal strip or a vertical list, the size, and a dark, green-screen or transparent
 background.
 
@@ -154,7 +154,7 @@ from step one).
 
 ### Sounds
 
-Practice runs do not cue the next step ahead of time; the screen and the presentation window
+Practice runs do not cue the next step ahead of time; the screen and the overlay
 show it. Short sounds react to what you just did: a mistake, going off track, rejoining, a
 finished lap. Settings can turn them off or add a tick on every correct step. In rhythm mode
 each step has its own sound in the track; Settings → **Action sounds** switches them to a voice
@@ -197,7 +197,7 @@ each judgement; Settings can turn it off.
 - **Game terms.** This is an unofficial third-party tool. It does not interact with the game
   client, but HoYoverse's terms do not approve third-party tools in general; use it at your own
   discretion.
-- **Windowed or borderless** is needed to see the presentation window over the game.
+- **Windowed or borderless** is needed to see the overlay over the game.
 - Input-only tracking cannot see cooldowns, energy or a swap the game refused.
 - The character roster and portraits ship with the app; nothing is downloaded at run time.
 
@@ -218,7 +218,7 @@ npm run screenshots # README screenshots, with `npm run dev` running
 
 - `src/lib/interpreter.ts`: raw input to game actions
 - `src/lib/engine.ts`: rotation tracking, skips, off-track and resync
-- `src/lib/presentation.ts`, `src/views/PresentationView.svelte`: the presentation window
+- `src/lib/presentation.ts`, `src/views/PresentationView.svelte`: the overlay window
 - `src/lib/audio.ts`, `src/lib/timing.ts`: sounds, learned pace
 - `src/lib/cues.ts`: feedback sounds; its ahead-of-time cues are switched off for now
 - `src/lib/metrics.ts`, `src/lib/coach.ts`, `src/lib/breakdown.ts`: run metrics, the verdict and

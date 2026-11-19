@@ -14,6 +14,7 @@ export const PRESENTATION_LABEL = 'presentation';
 const STATE_EVENT = 'presentation:state';
 const READY_EVENT = 'presentation:ready';
 const CLOSED_EVENT = 'presentation:closed';
+/** Browser build only; the desktop window's URL is in tauri.conf.json. */
 const URL = 'index.html#presentation';
 
 export interface PresentationState {
@@ -62,26 +63,14 @@ export async function openPresentation(prefs: PresentationSettings, onClosed: ()
     b.addEventListener('message', onMsg);
     return;
   }
+  // The window is described in tauri.conf.json (always transparent: the page paints the chosen
+  // background, so it can change live) and built by the shell with the main window's browser
+  // arguments, which WebView2 requires of windows sharing a profile.
+  const { invoke } = await import('@tauri-apps/api/core');
   const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
-  if (await WebviewWindow.getByLabel(PRESENTATION_LABEL)) return;
-  const w = new WebviewWindow(PRESENTATION_LABEL, {
-    url: URL,
-    title: 'Rotation presentation',
-    width,
-    height,
-    minWidth: 160,
-    minHeight: 60,
-    decorations: false,
-    // Always transparent: the page paints the chosen background, so it can change live.
-    transparent: true,
-    shadow: false,
-    alwaysOnTop: true,
-    resizable: true,
-  });
-  await new Promise<void>((resolve, reject) => {
-    void w.once('tauri://created', () => resolve());
-    void w.once<string>('tauri://error', (e) => reject(new Error(String(e.payload))));
-  });
+  await invoke('open_presentation', { width, height });
+  const w = await WebviewWindow.getByLabel(PRESENTATION_LABEL);
+  if (!w) throw new Error('the window did not open');
   void w.once('tauri://destroyed', onClosed);
 }
 
