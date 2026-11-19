@@ -92,12 +92,13 @@ stops the run, **F9** restarts it.
 ### 3. See what to fix
 
 Every run ends with a recap. A verdict and the three things worth working on come first. Below
-them, the rotation is laid out **turn by turn**: when each character's turn starts and ends,
-their actions tinted by how often they went wrong, time on field against your plan, and a note
+them, a **timeline** gives each character a lane: every action sits where you pressed it, as
+wide as it took, tinted by how often it went wrong. Under it the rotation is laid out **turn by
+turn**: when each character's turn starts and ends, time on field against your plan, and a note
 you can write for each turn, such as what it buffs or what it sets up.
 
 <p align="center">
-  <img src="docs/screenshots/recap.png" alt="Run recap: 95% accuracy, 'Right inputs, too slow'; Focus next: drill the swap to Xiangling, 2.1s slower than target; rotation breakdown with times, actions, on-field time and notes per turn" width="720">
+  <img src="docs/screenshots/recap.png" alt="Run recap: 95% accuracy, 'Right inputs, too slow'; Focus next: drill the swap to Xiangling, 2.1s slower than target; a timeline with one lane per character and each action as a chip; rotation breakdown with times, actions, on-field time and notes per turn" width="720">
 </p>
 
 **Metrics** on a loadout keeps every run: lap times, accuracy and field time per character, and

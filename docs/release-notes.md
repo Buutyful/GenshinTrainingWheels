@@ -1,9 +1,16 @@
-**Second beta.** Expect rough edges, and please report anything odd in
+**Third beta.** Expect rough edges, and please report anything odd in
 [Issues](https://github.com/Buutyful/GenshinTrainingWheels/issues).
 
-Already on beta 1? Install this over it: your loadouts, runs and settings are kept.
+Already on an earlier beta? Install this over it: your loadouts, runs and settings are kept.
 
 ## What's new
+
+- **Rotation timeline.** The run recap's breakdown now opens with a lane per character: each
+  action sits where you pressed it, as wide as it took, and is tinted by how often it went
+  wrong. Hover an action for its mistakes and timing. When the rotation has an opener, a
+  dashed line marks where the loop starts.
+
+## New in beta 2
 
 - **Ladders with friends.** Every loadout has a ladder on its Metrics page, ranked by best
   clean lap. *Share my result* gives you a code to send to friends; paste theirs with
@@ -42,7 +49,7 @@ anything, or send any input.
   move through your headphones, early enough to react to.
 - **Rhythm mode**: turns one of your clean laps into a backing track and judges each step
   against the beat, with latency calibration.
-- **Run recap**: a verdict, the three things to work on next, the turn-by-turn breakdown,
+- **Run recap**: a verdict, the three things to work on next, a per-character timeline and turn-by-turn breakdown,
   timing, laps and per-character stats. Trends over runs and a ladder per loadout.
 
 ## Known limits
