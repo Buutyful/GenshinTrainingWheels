@@ -1,9 +1,21 @@
-**Third beta.** Expect rough edges, and please report anything odd in
+**Fourth beta.** Expect rough edges, and please report anything odd in
 [Issues](https://github.com/Buutyful/GenshinTrainingWheels/issues).
 
 Already on an earlier beta? Install this over it: your loadouts, runs and settings are kept.
 
 ## What's new
+
+- **Presentation window for your videos.** *Presentation* in a run's top bar opens a window
+  that stays above the game and shows the whole rotation, highlighting the step you are on
+  and greying out the turns you have played, so viewers can follow along. Drag and resize it,
+  then add it to OBS with Window Capture. Settings → *Presentation window* picks a horizontal
+  strip or a vertical list, the size, and a dark, green-screen or transparent background. It
+  replaces the old *Overlay* button.
+- **No more cues ahead of time.** Practice no longer plays (or shows) the next step before
+  it is due: it guessed wrong too often to help. You still hear sounds for mistakes, going off
+  track and finished laps, and rhythm mode is unchanged.
+
+## New in beta 3
 
 - **Rotation timeline.** The run recap's breakdown now opens with a lane per character: each
   action sits where you pressed it, as wide as it took, and is tinted by how often it went
@@ -45,8 +57,8 @@ anything, or send any input.
 - **Loadouts**: four characters from a searchable roster with portraits, and the rotation
   typed in KQM / Hexenzirkel notation or built with buttons. Imports gcsim and Genshin
   Optimizer configs.
-- **Practice mode**: follows where you are in the rotation from your inputs and cues the next
-  move through your headphones, early enough to react to.
+- **Practice mode**: follows where you are in the rotation from your inputs and shows the step
+  you are on, with a presentation window to capture for videos.
 - **Rhythm mode**: turns one of your clean laps into a backing track and judges each step
   against the beat, with latency calibration.
 - **Run recap**: a verdict, the three things to work on next, a per-character timeline and turn-by-turn breakdown,
