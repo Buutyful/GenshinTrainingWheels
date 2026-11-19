@@ -3,7 +3,6 @@
   import { app, go } from '../lib/app.svelte';
   import { AudioOut } from '../lib/audio';
 
-  let { compactHidden = false }: { compactHidden?: boolean } = $props();
 
   const a = $derived(app.data.settings.audio);
   const music = $derived(app.data.settings.music);
@@ -44,7 +43,7 @@
   });
 </script>
 
-<div class="mixer" class:hide-compact={compactHidden} bind:this={root}>
+<div class="mixer" bind:this={root}>
   <button class="ghost icon" class:on={open} title="Volume" aria-label="Volume mixer" aria-expanded={open} onclick={() => (open = !open)}>
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
       <path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z" fill="currentColor" />

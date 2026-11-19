@@ -120,7 +120,6 @@ textarea { resize: vertical; font-family: 'Cascadia Mono', Consolas, monospace; 
 .card-head { display: flex; align-items: center; gap: 10px; }
 .card-head h3 { flex: 1; }
 
-
 /* Rotation track */
 .track { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .sequence { display: flex; flex-wrap: wrap; gap: 8px; min-height: 52px; align-items: center; }
@@ -295,16 +294,6 @@ th { color: var(--muted); font-weight: 500; font-size: 12.5px; }
 .tabs button { border: 0; background: transparent; padding: 4px 12px; border-radius: 7px; color: var(--muted); }
 .tabs button.on { background: var(--panel); color: var(--text); }
 .team-strip { display: flex; gap: 6px; align-items: center; }
-
-/* Overlay: the window shrinks to a strip that stays above the game. */
-body.compact-mode { overflow: hidden; }
-body.compact-mode .hide-compact { display: none; }
-body.compact-mode .bar { padding: 5px 10px; gap: 8px; }
-body.compact-mode .bar h1 { display: none; }
-body.compact-mode .page { padding: 8px 10px; }
-body.compact-mode .now { padding: 8px 14px; gap: 12px; }
-body.compact-mode .now-main { font-size: 30px; }
-body.compact-mode .now-label { display: none; }
 
 @media (max-width: 640px) {
   .team { grid-template-columns: repeat(2, 1fr); }

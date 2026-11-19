@@ -1,6 +1,6 @@
 [package]
 name = "genshin-training-wheels"
-version = "0.1.0-beta.3"
+version = "0.1.0-beta.4"
 description = "Practice Genshin Impact team rotations with input tracking and audio cues"
 edition = "2021"
 

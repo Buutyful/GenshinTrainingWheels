@@ -8,11 +8,12 @@
   import { clock, pct } from '../lib/format';
   import { prettyCode } from '../lib/keycodes';
   import { charName, stepLabel } from '../lib/notation';
-  import { isTauri, setCompact } from '../lib/platform';
+  import { isTauri } from '../lib/platform';
+  import { closePresentation, onPresentationReady, openPresentation, publishPresentation, type PresentationState } from '../lib/presentation';
   import { Session, type Report, type SessionMode } from '../lib/session.svelte';
   import { STYLE_IDS, STYLES } from '../lib/music/band';
   import { GRADE_LABEL, GRADES } from '../lib/rhythm';
-  import type { Guidance, MusicStyle, SessionSummary } from '../lib/types';
+  import type { MusicStyle, SessionSummary } from '../lib/types';
 
   let { id, mode = 'practice' }: { id: string; mode?: SessionMode } = $props();
 
@@ -24,8 +25,6 @@
   let session = $state.raw<Session | null>(null);
   let report = $state.raw<Report | null>(null);
   let lastRun = $state.raw<SessionSummary | null>(null);
-  let compact = $state(false);
-  let guidance = $state<Guidance>(app.data.settings.audio.guidance);
   /** Whether this run's clean lap became the loadout's rhythm track. */
   let trackSaved = $state(false);
   let trackReplaced = $state(false);
@@ -63,15 +62,53 @@
     if (r.summary.durationMs > 0) trackSaved = recordSession(id, r.summary, r.timings, r.track);
     report = r;
     lastRun = r.summary;
-    applyCompact(false);
   }
 
-  function applyCompact(on: boolean) {
-    if (compact === on) return;
-    compact = on;
-    document.body.classList.toggle('compact-mode', on);
-    void setCompact(on);
+  /** Whether the presentation window is open. */
+  let presenting = $state(false);
+  let presentError = $state<string | null>(null);
+
+  function presentationState(): PresentationState | null {
+    if (!session || !loadout) return null;
+    const s = session.snap;
+    // Plain data: it is cloned or serialised on its way to the other window.
+    return $state.snapshot({
+      name: loadout.name,
+      characters: loadout.characters,
+      steps: session.steps,
+      statuses: session.started ? s.statuses : null,
+      pointer: s.pointer,
+      naClicks: s.naClicks,
+      status: session.started ? s.status : 'idle',
+      offReason: s.offReason,
+      lap: s.lap,
+      elapsedMs: s.elapsedMs,
+      prefs: app.data.settings.presentation,
+    });
   }
+
+  async function togglePresentation() {
+    presentError = null;
+    if (presenting) {
+      presenting = false;
+      await closePresentation();
+      return;
+    }
+    try {
+      await openPresentation($state.snapshot(app.data.settings.presentation), () => (presenting = false));
+      presenting = true;
+    } catch (e) {
+      presentError = `Could not open the presentation window: ${e instanceof Error ? e.message : String(e)}`;
+    }
+  }
+
+  // Every change of the run reaches the presentation window. Between runs (the report) it keeps
+  // showing the last state.
+  $effect(() => {
+    if (!presenting) return;
+    const st = presentationState();
+    if (st) void publishPresentation(st);
+  });
 
   let musicStyle = $state<MusicStyle>(app.data.settings.music.style);
   /** Changing the style mid-run is heard on the next 16th; the cues stay the same. */
@@ -85,20 +122,22 @@
     }
   }
 
-  function setGuidance(g: Guidance) {
-    guidance = g;
-    app.data.settings.audio.guidance = g;
-    if (session) session.settings.audio.guidance = g;
-  }
+  let stopReady: (() => void) | null = null;
 
   onMount(() => {
     if (loadout?.steps.length) prepare();
     else go({ name: 'home' });
+    // The presentation window asks for the state once it has loaded.
+    void onPresentationReady(() => {
+      const st = presentationState();
+      if (st) void publishPresentation(st);
+    }).then((f) => (stopReady = f));
   });
 
   onDestroy(() => {
     session?.stop();
-    applyCompact(false);
+    stopReady?.();
+    if (presenting) void closePresentation();
   });
 
 </script>
@@ -110,18 +149,18 @@
   {@const next = nextIndex >= 0 ? session.steps[nextIndex] : null}
   {@const focus = s.status === 'offtrack' ? s.activeSlot : cur.slot}
 
-  <header class="bar" data-tauri-drag-region>
+  <header class="bar">
     {#if session.started}
       <button class="danger" onclick={finish}>Stop</button>
     {:else}
-      <button class="hide-compact" onclick={() => go({ name: 'home' })}>Back</button>
+      <button onclick={() => go({ name: 'home' })}>Back</button>
       <button class="primary" onclick={begin}>Start</button>
     {/if}
-    <h1 data-tauri-drag-region>{loadout.name}</h1>
+    <h1>{loadout.name}</h1>
     <span class="pill s-{s.status}">
       {!session.started ? 'Not started' : s.status === 'armed' ? 'Waiting for first step' : s.status === 'tracking' ? 'Tracking' : s.status === 'done' ? 'Done' : s.offReason === 'idle' ? 'Paused' : 'Off track'}
     </span>
-    <div class="spacer" data-tauri-drag-region></div>
+    <div class="spacer"></div>
     <div class="stats">
       <span><b>{s.lap}</b> lap{s.lap === 1 ? '' : 's'}</span>
       <span><b>{clock(s.elapsedMs)}</b></span>
@@ -131,30 +170,26 @@
       <span class="pill rhythm" title="Rhythm mode">
         ♪ {session.hasTrack ? `Rhythm · ${session.trackBars} bar${session.trackBars === 1 ? '' : 's'}` : 'Recording track'}
       </span>
-      <select class="hide-compact" value={musicStyle} onchange={(e) => setStyle(e.currentTarget.value as MusicStyle)} aria-label="Music style">
+      <select value={musicStyle} onchange={(e) => setStyle(e.currentTarget.value as MusicStyle)} aria-label="Music style">
         {#each STYLE_IDS as id (id)}<option value={id}>♪ {STYLES[id].label}</option>{/each}
       </select>
-      <div class="beats hide-compact" aria-hidden="true">
+      <div class="beats" aria-hidden="true">
         {#each [0, 1, 2, 3] as b (b)}<span class:on={s.music?.beat === b} class:one={b === 0}></span>{/each}
       </div>
-    {:else}
-    <select class="hide-compact" value={guidance} onchange={(e) => setGuidance(e.currentTarget.value as Guidance)} aria-label="Audio guidance">
-      <option value="adaptive">Audio: only when late</option>
-      <option value="full">Audio: every step</option>
-      <option value="swaps">Audio: swaps only</option>
-      <option value="off">Audio: off</option>
-    </select>
     {/if}
-    <Mixer compactHidden />
-    {#if session.started}<button class="hide-compact" onclick={() => session?.restart()}>Restart</button>{/if}
-    {#if isTauri}<button onclick={() => applyCompact(!compact)}>{compact ? 'Expand' : 'Overlay'}</button>{/if}
+    <Mixer />
+    {#if session.started}<button onclick={() => session?.restart()}>Restart</button>{/if}
+    <button class:on={presenting} onclick={togglePresentation} title="A window above the game that shows the rotation and where you are in it, for recording">
+      {presenting ? 'Close presentation' : 'Presentation'}
+    </button>
   </header>
 
   <main class="page live">
     {#if session.error}<div class="notice warn">{session.error}</div>{/if}
+    {#if presentError}<div class="notice warn">{presentError}</div>{/if}
 
     <section class="now el-{loadout.characters[focus].element} s-{s.status}">
-      <Avatar character={loadout.characters[focus]} size={compact ? 44 : 84} dim={s.status === 'offtrack'} />
+      <Avatar character={loadout.characters[focus]} size={84} dim={s.status === 'offtrack'} />
       <div class="now-text">
       {#if s.status === 'offtrack'}
         <div class="now-label">{s.offReason === 'idle' ? 'Paused' : 'Off track'}</div>
@@ -215,7 +250,7 @@
           {/key}
           {#if j.streak >= 3}<span class="streak">{j.streak} in a row</span>{/if}
           <div class="spacer"></div>
-          <span class="counts hide-compact">
+          <span class="counts">
             {#each GRADES as g (g)}<span class="g-{g}" title={GRADE_LABEL[g]}><b>{j.counts[g]}</b> {GRADE_LABEL[g].toLowerCase()}</span>{/each}
           </span>
         </div>
@@ -231,11 +266,11 @@
       </div>
     {/if}
 
-    <div class="hide-compact">
+    <div>
       <Track steps={session.steps} characters={loadout.characters} statuses={s.statuses} pointer={s.pointer} naClicks={s.naClicks} />
     </div>
 
-    <section class="feed hide-compact" aria-live="polite">
+    <section class="feed" aria-live="polite">
       {#each session.feed as f (f.id)}
         <div class="feed-item t-{f.tone}">{f.text}</div>
       {:else}
